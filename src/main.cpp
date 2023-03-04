@@ -4,7 +4,6 @@
 
 int main(int argc, char const *argv[])
 {
-    // ldraw library path
     LDrawConverter converter("LIBRARY_PATH");
     
     LDrawFile file;
