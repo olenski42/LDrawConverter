@@ -3,7 +3,6 @@
 #include <sstream>
 #include <algorithm>
 
-
 LDrawConverter::LDrawConverter(const char *libraryPath)
     : libPath(libraryPath)
 {
@@ -29,12 +28,11 @@ inline int convSizetInt(size_t size)
 
 inline FileType nextFileType(FileType fileType)
 {
-    if(fileType != FILETYPE_PRIMITIVE)
+    if (fileType != FILETYPE_PRIMITIVE)
         return static_cast<FileType>(fileType - 1);
     else
         return FILETYPE_PRIMITIVE;
 }
-
 
 inline std::vector<std::string> parseLine(std::ifstream &fileStream)
 {
@@ -54,31 +52,31 @@ inline std::vector<std::string> parseLine(std::ifstream &fileStream)
     return parsedLine;
 }
 
-LDrawFile* LDrawConverter::GetFile(std::string path, FileType fileType)
+LDrawFile *LDrawConverter::GetFile(std::string path, FileType fileType)
 {
     for (auto it = path.begin(); it != path.end(); it++)
     {
-        //convert to forward slash
+        // convert to forward slash
         if (*it == '\\')
             *it = '/';
 
-        //remove leading slash
+        // remove leading slash
         if (it == path.begin() && *it == '/')
             path.erase(it);
     }
 
-    LDrawFile* file;
+    LDrawFile *file;
     auto itToFile = nameResolver.find(path);
     if (itToFile == nameResolver.end())
     {
         file = new LDrawFile();
-        nameResolver.insert(std::pair<std::string, LDrawFile*>(path, file));
+        nameResolver.insert(std::pair<std::string, LDrawFile *>(path, file));
 
         std::transform(path.begin(), path.end(), path.begin(), ::tolower);
 
         if (path.size() > 2 && path[0] == 's' && path[1] == '/')
             fileType = FILETYPE_PART;
-        
+
         file->fileType = fileType;
         unresolvedFiles.push_back(UnresolvedFile{file, path, fileType});
     }
@@ -88,7 +86,7 @@ LDrawFile* LDrawConverter::GetFile(std::string path, FileType fileType)
     return file;
 }
 
-LDrawFile* LDrawConverter::ParseFile(std::string filePath)
+LDrawFile *LDrawConverter::ParseFile(std::string filePath)
 {
     std::ifstream fileStream;
     fileStream.open(filePath);
@@ -98,7 +96,7 @@ LDrawFile* LDrawConverter::ParseFile(std::string filePath)
         LogE("file \"" << filePath << "\" could not be opened!");
     }
 
-    LDrawFile* file = GetFile(filePath, FILETYPE_MULTIPART);
+    LDrawFile *file = GetFile(filePath, FILETYPE_MULTIPART);
     ResolveAll();
 
     return unresolvedFiles.size() == 0 ? file : nullptr;
@@ -109,7 +107,7 @@ bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileT
     bool invertNext = false;
     bool CCW = true;
 
-    //indicates if the current file is a subfile file of a mpd file
+    // indicates if the current file is a subfile file of a mpd file
     bool MPDsub = false;
 
     LDrawFile *currentFile = file;
@@ -122,7 +120,7 @@ bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileT
         // skip empty lines
         if (line.size() == 0)
             continue;
-        
+
         else if (line.size() >= 3 && line[0] == "0")
         {
             if (line[1] == "BFC")
@@ -170,16 +168,16 @@ bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileT
                 // make name lower
                 std::transform(currentFileName.begin(), currentFileName.end(), currentFileName.begin(), ::tolower);
 
-                if(fileType != FILETYPE_MULTIPART && fileType != FILETYPE_SUBPART)
-                        LogW("file \"" << currentFileName << "\" is a subfile of a non-mpd file!");
+                if (fileType != FILETYPE_MULTIPART && fileType != FILETYPE_SUBPART)
+                    LogW("file \"" << currentFileName << "\" is a subfile of a non-mpd file!");
 
-                if(MPDsub == false)
+                if (MPDsub == false)
                 {
                     MPDsub = true;
                 }
                 else
                 {
-                    LDrawFile* currentSubFile = GetFile(currentFileName, FILETYPE_MULTIPART);
+                    LDrawFile *currentSubFile = GetFile(currentFileName, FILETYPE_MULTIPART);
                     currentFile = currentSubFile;
                 }
 
@@ -277,17 +275,16 @@ bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileT
             currentFile->vertices.back().y = stof(line[12]);
             currentFile->vertices.back().z = stof(line[13]);
 
-
             unsigned int index = convSizetUint(currentFile->vertices.size()) - 1;
             if (CCW)
             {
-                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index - 3, index-2, index - 1)});
-                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index-3, index - 1, index)});
+                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index - 3, index - 2, index - 1)});
+                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index - 3, index - 1, index)});
             }
             else
             {
-                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index - 1, index-2, index - 3)});
-                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index, index - 1, index-3)});
+                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index - 1, index - 2, index - 3)});
+                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index, index - 1, index - 3)});
             }
         }
 
@@ -298,9 +295,9 @@ bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileT
     return true;
 }
 
-std::ifstream LDrawConverter::FindFile(UnresolvedFile* file)
+std::ifstream LDrawConverter::FindFile(UnresolvedFile *file)
 {
-    if(file->fileType == FILETYPE_SUBPART)
+    if (file->fileType == FILETYPE_SUBPART)
     {
         file->fileType = FILETYPE_PART;
     }
@@ -308,16 +305,16 @@ std::ifstream LDrawConverter::FindFile(UnresolvedFile* file)
     std::ifstream stream;
     std::string path;
 
-    if(file->fileType == FILETYPE_MULTIPART)
+    if (file->fileType == FILETYPE_MULTIPART)
         path = file->fileName;
-    else if(file->fileType == FILETYPE_PART)
+    else if (file->fileType == FILETYPE_PART)
         path = libPath + "parts/" + file->fileName;
-    else if(file->fileType == FILETYPE_PRIMITIVE)
+    else if (file->fileType == FILETYPE_PRIMITIVE)
         path = libPath + "p/" + file->fileName;
 
     stream.open(path);
 
-    if(stream.is_open() == false)
+    if (stream.is_open() == false)
     {
         LogW("file \"" << path << "\" not found, extending search");
         file->fileType = FILETYPE_MULTIPART;
@@ -326,15 +323,15 @@ std::ifstream LDrawConverter::FindFile(UnresolvedFile* file)
     {
         file->fileType = (FileType)((int)file->fileType - 1);
 
-        if(file->fileType == FILETYPE_MULTIPART)
+        if (file->fileType == FILETYPE_MULTIPART)
             path = file->fileName;
-        else if(file->fileType == FILETYPE_PART)
+        else if (file->fileType == FILETYPE_PART)
             path = libPath + "parts/" + file->fileName;
-        else if(file->fileType == FILETYPE_PRIMITIVE)
+        else if (file->fileType == FILETYPE_PRIMITIVE)
             path = libPath + "p/" + file->fileName;
-        else if(file->fileType == FILETYPE_SUBPART)
+        else if (file->fileType == FILETYPE_SUBPART)
             continue;
-         
+
         stream.open(path);
     }
 
@@ -351,9 +348,8 @@ void LDrawConverter::ResolveAll()
         UnresolvedFile currentFile = unresolvedFiles.back();
         unresolvedFiles.pop_back();
 
-
         std::ifstream stream = FindFile(&currentFile);
-        if(!stream.is_open())
+        if (!stream.is_open())
         {
             LogE("Could not open file " << currentFile.fileName);
             continue;
@@ -370,13 +366,12 @@ void LDrawConverter::LoadColorFile()
     std::ifstream fileStream((libPath + "LDConfig.ldr").c_str());
     if (!fileStream.is_open())
     {
-        LogE("Could not open color file!");
+        LogE("Could not open color file! (missing \"LDConfig.ldr\" in the lib folder)");
         return;
     }
 
-    
-    //parse the color file
-    while(fileStream.good())
+    // parse the color file
+    while (fileStream.good())
     {
         std::vector<std::string> line = parseLine(fileStream);
         if (line.size() == 0)
@@ -396,7 +391,6 @@ void LDrawConverter::LoadColorFile()
             tmp = line[6].substr(5, 2);
             color.b = stoul(tmp, nullptr, 16) / 255.0f;
 
-
             glm::vec3 edgeColor;
             tmp = line[8].substr(1);
             edgeColor.r = stoul(tmp, nullptr, 16) / 255.0f;
@@ -404,11 +398,66 @@ void LDrawConverter::LoadColorFile()
             edgeColor.g = stoul(tmp, nullptr, 16) / 255.0f;
             tmp = line[8].substr(1);
             edgeColor.b = stoul(tmp, nullptr, 16) / 255.0f;
-            
+
             colorMap[colorID] = LDrawColor();
             colorMap[colorID].name = name;
             colorMap[colorID].color = color;
             colorMap[colorID].edgeColor = edgeColor;
+
+            // load optional color values
+            for (int i = 9; i < line.size(); i++)
+            {
+                if (line[i] == "ALPHA")
+                {
+                    colorMap[colorID].transparency = true;
+                    if(i + 1 < line.size())
+                    {
+                        colorMap[colorID].alpha = stof(line[i+1])/ 255.0f;
+                        i++;
+                    }
+                    else
+                        LogW("Missing alpha value for color " << colorID);
+                }
+                else if (line[i] == "LUMINANCE")
+                {
+                    colorMap[colorID].glow = true;
+                    if(i + 1 < line.size())
+                    {
+                        colorMap[colorID].luminance = stof(line[i+1])/ 255.0f;
+                        i++;
+                    }
+                    else
+                        LogW("Missing luminance value for color " << colorID);
+                }
+                else if (line[i] == "CHROME")
+                {
+                    colorMap[colorID].chrome = true;
+                }
+                else if (line[i] == "PEARLESCENT")
+                {
+                    colorMap[colorID].pearl = true;
+                }
+                else if (line[i] == "RUBBER")
+                {
+                    colorMap[colorID].rubber = true;
+                }
+                else if (line[i] == "MATTE_METALLIC")
+                {
+                    colorMap[colorID].matteMetallic = true;
+                }
+                else if (line[i] == "METAL")
+                {
+                    colorMap[colorID].metallic = true;
+                }
+                else if (line[i] == "MATERIAL")
+                {
+                    break;
+                }
+                else
+                {
+                    LogW("Unknown color value: " << line[i]);
+                }
+            }
         }
     }
 }
