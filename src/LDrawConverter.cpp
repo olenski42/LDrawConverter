@@ -27,10 +27,14 @@ inline int convSizetInt(size_t size)
     return static_cast<int>(size);
 }
 
-inline FileType nextFileType(FileType type)
+inline FileType nextFileType(FileType fileType)
 {
-    return FileType(type > 0 ? type - 1 : 0);
+    if(fileType != FILETYPE_PRIMITIVE)
+        return static_cast<FileType>(fileType - 1);
+    else
+        return FILETYPE_PRIMITIVE;
 }
+
 
 inline std::vector<std::string> parseLine(std::ifstream &fileStream)
 {
@@ -50,37 +54,41 @@ inline std::vector<std::string> parseLine(std::ifstream &fileStream)
     return parsedLine;
 }
 
-FileID LDrawConverter::GetFileID(std::string path, FileType parentType)
+LDrawFile* LDrawConverter::GetFile(std::string path, FileType fileType)
 {
-    FileID id;
-
-    // replaces "\" with "/" for relative paths e.g. s\3005s01.dat to s/3005s01.dat (which is not a primitive)
-    bool relativePath = false;
     for (auto it = path.begin(); it != path.end(); it++)
     {
-        if (char(92) == *it)
-        {
+        //convert to forward slash
+        if (*it == '\\')
             *it = '/';
-            relativePath = true;
-        }
+
+        //remove leading slash
+        if (it == path.begin() && *it == '/')
+            path.erase(it);
     }
 
-    auto itToFile = fileIDs.find(path);
-    if (itToFile == fileIDs.end())
+    LDrawFile* file;
+    auto itToFile = nameResolver.find(path);
+    if (itToFile == nameResolver.end())
     {
-        id = convSizetUint(fileIDs.size());
-        fileIDs.emplace(path, id);
+        file = new LDrawFile();
+        nameResolver.insert(std::pair<std::string, LDrawFile*>(path, file));
 
-        FileType fileType = relativePath ? parentType : nextFileType(parentType);
-        unresolvedFiles.push_back(UnresolvedFile{id, path, fileType});
+        std::transform(path.begin(), path.end(), path.begin(), ::tolower);
+
+        if (path.size() > 2 && path[0] == 's' && path[1] == '/')
+            fileType = FILETYPE_PART;
+        
+        file->fileType = fileType;
+        unresolvedFiles.push_back(UnresolvedFile{file, path, fileType});
     }
     else
-        id = itToFile->second;
+        file = itToFile->second;
 
-    return id;
+    return file;
 }
 
-bool LDrawConverter::ParseFile(LDrawFile &file, std::string filePath, FileType fileType)
+LDrawFile* LDrawConverter::ParseFile(std::string filePath)
 {
     std::ifstream fileStream;
     fileStream.open(filePath);
@@ -90,23 +98,32 @@ bool LDrawConverter::ParseFile(LDrawFile &file, std::string filePath, FileType f
         LogE("file \"" << filePath << "\" could not be opened!");
     }
 
-    return ParseFile(file, fileStream, fileType);
+    LDrawFile* file = GetFile(filePath, FILETYPE_MULTIPART);
+    ResolveAll();
+
+    return unresolvedFiles.size() == 0 ? file : nullptr;
 }
 
-bool LDrawConverter::ParseFile(LDrawFile &file, std::ifstream &fileStream, FileType fileType)
+bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileType fileType)
 {
     bool invertNext = false;
     bool CCW = true;
-    bool MPD = false;
 
-    LDrawFile *currentFile = &file;
+    //indicates if the current file is a subfile file of a mpd file
+    bool MPDsub = false;
+
+    LDrawFile *currentFile = file;
 
     while (fileStream.good())
     {
         // create vector of elements in the line
         std::vector<std::string> line = parseLine(fileStream);
 
-        if (line.size() >= 3 && line[0] == "0")
+        // skip empty lines
+        if (line.size() == 0)
+            continue;
+        
+        else if (line.size() >= 3 && line[0] == "0")
         {
             if (line[1] == "BFC")
             {
@@ -141,6 +158,7 @@ bool LDrawConverter::ParseFile(LDrawFile &file, std::ifstream &fileStream, FileT
 
             else if (line[1] == "FILE")
             {
+                // read file name from line(might be multiple words)
                 std::string currentFileName;
                 for (int i = 2; i < line.size(); i++)
                 {
@@ -149,22 +167,27 @@ bool LDrawConverter::ParseFile(LDrawFile &file, std::ifstream &fileStream, FileT
                         currentFileName.append(" ");
                 }
 
-                for (char &c : currentFileName)
+                // make name lower
+                std::transform(currentFileName.begin(), currentFileName.end(), currentFileName.begin(), ::tolower);
+
+                if(fileType != FILETYPE_MULTIPART && fileType != FILETYPE_SUBPART)
+                        LogW("file \"" << currentFileName << "\" is a subfile of a non-mpd file!");
+
+                if(MPDsub == false)
                 {
-                    if (c <= 'Z' && c >= 'A')
-                        c -= ('Z' - 'z');
+                    MPDsub = true;
+                }
+                else
+                {
+                    LDrawFile* currentSubFile = GetFile(currentFileName, FILETYPE_MULTIPART);
+                    currentFile = currentSubFile;
                 }
 
-                FileID currentFileID = GetFileID(currentFileName, FILETYPE_MULTIPART);
-
-                if (MPD == true)
-                    currentFile = &fileCache[currentFileID];
-                else
-                    MPD = true;
+                // TODO: set root file
 
                 for (std::vector<UnresolvedFile>::iterator it = unresolvedFiles.begin(); it != unresolvedFiles.end();)
                 {
-                    if (it->fileID == currentFileID)
+                    if (it->file == currentFile)
                         it = unresolvedFiles.erase(it);
                     else
                         it++;
@@ -205,8 +228,14 @@ bool LDrawConverter::ParseFile(LDrawFile &file, std::ifstream &fileStream, FileT
                     subFileName.append(" ");
             }
 
+            std::transform(subFileName.begin(), subFileName.end(), subFileName.begin(), ::tolower);
+
             meshCount++;
-            currentFile->subFiles.emplace_back(SubFile{transform, GetFileID(subFileName, fileType), invertNext != (glm::determinant(transform) < 0), stoul(line[1])});
+            LogI("Invertnext: " << invertNext);
+            bool determinant = glm::determinant(transform) < 0;
+            bool invert = invertNext != determinant;
+            SubFile s = SubFile{GetFile(subFileName, nextFileType(fileType)), stoul(line[1]), transform, invert};
+            currentFile->subFiles.emplace_back(s);
         }
 
         else if (line.size() == 11 && line[0] == "3")
@@ -223,16 +252,12 @@ bool LDrawConverter::ParseFile(LDrawFile &file, std::ifstream &fileStream, FileT
             currentFile->vertices.back().y = stof(line[9]);
             currentFile->vertices.back().z = stof(line[10]);
 
-            currentFile->colors.push_back(stoul(line[1]));
-            currentFile->colors.push_back(stoul(line[1]));
-            currentFile->colors.push_back(stoul(line[1]));
-
             unsigned int index = convSizetUint(currentFile->vertices.size()) - 1;
 
             if (CCW)
-                currentFile->faces.emplace_back(index, index - 1, index - 2);
+                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index - 2, index - 1, index)});
             else
-                currentFile->faces.emplace_back(index - 2, index - 1, index);
+                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index, index - 1, index - 2)});
         }
 
         else if (line.size() == 14 && line[0] == "4")
@@ -253,21 +278,17 @@ bool LDrawConverter::ParseFile(LDrawFile &file, std::ifstream &fileStream, FileT
             currentFile->vertices.back().y = stof(line[12]);
             currentFile->vertices.back().z = stof(line[13]);
 
-            currentFile->colors.push_back(stoul(line[1]));
-            currentFile->colors.push_back(stoul(line[1]));
-            currentFile->colors.push_back(stoul(line[1]));
-            currentFile->colors.push_back(stoul(line[1]));
 
             unsigned int index = convSizetUint(currentFile->vertices.size()) - 1;
             if (CCW)
             {
-                currentFile->faces.emplace_back(index - 3, index, index - 2);
-                currentFile->faces.emplace_back(index, index - 1, index - 2);
+                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index - 3, index-2, index - 1)});
+                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index-3, index - 1, index)});
             }
             else
             {
-                currentFile->faces.emplace_back(index - 2, index, index - 3);
-                currentFile->faces.emplace_back(index - 2, index - 1, index);
+                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index - 1, index-2, index - 3)});
+                currentFile->faces.emplace_back(Face{stoul(line[1]), glm::ivec3(index, index - 1, index-3)});
             }
         }
 
@@ -278,31 +299,48 @@ bool LDrawConverter::ParseFile(LDrawFile &file, std::ifstream &fileStream, FileT
     return true;
 }
 
-std::ifstream LDrawConverter::FindFile(std::string file, FileType type)
+std::ifstream LDrawConverter::FindFile(UnresolvedFile* file)
 {
-    std::string tmp = libPath + (type == FILETYPE_PRIMITIVE ? "p/" : "parts/") + file;
-    std::ifstream stream(tmp.c_str());
-    if (!stream.is_open())
+    if(file->fileType == FILETYPE_SUBPART)
     {
-        LogW("file \"" << tmp << "\" not found, extending search");
-        tmp = libPath + (type == FILETYPE_PRIMITIVE ? "parts/" : "p/") + file;
-        stream.open(tmp);
-
-        if (!stream.is_open())
-        {
-            LogW("file \"" << tmp << "\" not found, extending search");
-            stream.open(file);
-            if (!stream.is_open())
-            {
-                LogW("file \"" << tmp << "\" not found!");
-                unresolvedFileAmnt++;
-            }
-            else
-                LogW("file \"" << tmp << "\" resolved!");
-        }
-        else
-            LogW("file \"" << tmp << "\" resolved!");
+        file->fileType = FILETYPE_PART;
     }
+
+    std::ifstream stream;
+    std::string path;
+
+    if(file->fileType == FILETYPE_MULTIPART)
+        path = file->fileName;
+    else if(file->fileType == FILETYPE_PART)
+        path = libPath + "parts/" + file->fileName;
+    else if(file->fileType == FILETYPE_PRIMITIVE)
+        path = libPath + "p/" + file->fileName;
+
+    stream.open(path);
+
+    if(stream.is_open() == false)
+    {
+        LogW("file \"" << path << "\" not found, extending search");
+        file->fileType = FILETYPE_MULTIPART;
+    }
+    while (stream.is_open() == false && file->fileType > 0)
+    {
+        file->fileType = (FileType)((int)file->fileType - 1);
+
+        if(file->fileType == FILETYPE_MULTIPART)
+            path = file->fileName;
+        else if(file->fileType == FILETYPE_PART)
+            path = libPath + "parts/" + file->fileName;
+        else if(file->fileType == FILETYPE_PRIMITIVE)
+            path = libPath + "p/" + file->fileName;
+        else if(file->fileType == FILETYPE_SUBPART)
+            continue;
+         
+        stream.open(path);
+    }
+
+    if (stream.is_open() == false)
+        LogW("File \"" << file->fileName << "\" could not be found");
 
     return stream;
 }
@@ -314,14 +352,18 @@ void LDrawConverter::ResolveAll()
         UnresolvedFile currentFile = unresolvedFiles.back();
         unresolvedFiles.pop_back();
 
-        // fill the file in fileCache
-        if (!ParseFile(fileCache[currentFile.fileID], FindFile(currentFile.fileName, currentFile.fileType), currentFile.fileType))
+
+        std::ifstream stream = FindFile(&currentFile);
+        if(!stream.is_open())
         {
-            fileCache.erase(fileCache.find(currentFile.fileID));
-            LogW("File \"" << currentFile.fileName << "\" could not be found"); // TODO: move this to Find file
+            LogE("Could not open file " << currentFile.fileName);
+            continue;
         }
+
+        currentFile.file->fileType = currentFile.fileType;
+        ParseFile(currentFile.file, stream, currentFile.fileType);
     }
-    LogI(unresolvedFileAmnt << " unresolved files!");
+    LogI(unresolvedFiles.size() << " unresolved files!");
 }
 
 void LDrawConverter::LoadColorFile()

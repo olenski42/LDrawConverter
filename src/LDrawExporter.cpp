@@ -2,6 +2,53 @@
 #include <vector>
 #include "Common/Common.h"
 #include "glm/glm.hpp"
+#include <queue>
+
+
+void ReduceMesh(MeshData* meshData)
+{
+    std::vector<glm::vec3> vertices;
+    std::vector<glm::ivec3> faces;
+    std::vector<ColorID> colors;
+
+    std::vector<int> vertexMap(meshData->vertices.size(), -1);
+
+    for (int i = 0; i < meshData->faces.size(); i++)
+    {
+        glm::ivec3 face = meshData->faces[i];
+        ColorID color = meshData->colors[i];
+
+        for (int j = 0; j < 3; j++)
+        {
+            int vertexIndex = face[j];
+            glm::vec3 vertex = meshData->vertices[vertexIndex];
+
+            bool found = false;
+            for (int k = 0; k < vertices.size(); k++)
+            {
+                if (vertices[k] == vertex)
+                {
+                    vertexMap[vertexIndex] = k;
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found == false)
+            {
+                vertexMap[vertexIndex] = vertices.size();
+                vertices.push_back(vertex);
+                colors.push_back(color);
+            }
+        }
+
+        faces.push_back(glm::ivec3(vertexMap[face.x], vertexMap[face.y], vertexMap[face.z]));
+    }
+
+    meshData->vertices = vertices;
+    meshData->faces = faces;
+    meshData->colors = colors;
+}
 
 inline unsigned int convSizetUint(size_t size)
 {
@@ -21,127 +68,121 @@ inline int convSizetInt(size_t size)
     return static_cast<int>(size);
 }
 
-void LDrawExporter::CreateMesh(FbxScene *pScene, MeshData *meshData)
+LDrawExporter::LDrawExporter(LDrawConverter* converter)
+    : m_converter(converter)
 {
-    const char *pName = "Triangle";
-    FbxNode* lRootNode = pScene->GetRootNode();
-    std::vector<glm::ivec3>* faces = &meshData->faces;
-
-
-    FbxMesh *lMesh = FbxMesh::Create(pScene, pName);
-    lMesh->InitControlPoints(convSizetInt(meshData->vertices.size()));
-    FbxVector4 *lControlPoints = lMesh->GetControlPoints();
-
-    for (size_t i = 0; i < meshData->vertices.size(); i++)
-    {
-        lControlPoints[i] = FbxVector4(meshData->vertices.at(i).x, meshData->vertices.at(i).y, meshData->vertices.at(i).z);
-    }
-
-    FbxGeometryElementMaterial* lMaterialElement = lMesh->CreateElementMaterial();
-    lMaterialElement->SetMappingMode(FbxGeometryElement::eByPolygon);
-    lMaterialElement->SetReferenceMode(FbxGeometryElement::eIndexToDirect);
-
-    for (int i = 0; i < meshData->faces.size(); i++)
-    {
-        lMesh->BeginPolygon(-1);
-        lMesh->AddPolygon(faces->at(i).x);
-        lMesh->AddPolygon(faces->at(i).y);
-        lMesh->AddPolygon(faces->at(i).z);
-        lMesh->EndPolygon();
-    }
-    lMesh->GenerateNormals();
-
-    FbxNode *lNode = FbxNode::Create(pScene, pName);
-    lNode->SetNodeAttribute(lMesh);
-
-    //add materials using the ldraw color palette
-    for(auto color : converter->colorMap)
-    {
-        //create material
-        FbxSurfacePhong *lMaterial = FbxSurfacePhong::Create(pScene, color.second.name.c_str());
-        lMaterial->Emissive.Set(FbxDouble3(0, 0, 0));
-        lMaterial->Ambient.Set(FbxDouble3(color.second.color.x, color.second.color.y, color.second.color.z));
-        lMaterial->Diffuse.Set(FbxDouble3(color.second.color.x, color.second.color.y, color.second.color.z));
-        lMaterial->Specular.Set(FbxDouble3(0.5, 0.5, 0.5));
-        lMaterial->Shininess.Set(0.5);
-        lMaterial->ReflectionFactor.Set(0.5);
-        lMaterial->TransparencyFactor.Set(0);
-        lMaterial->ShadingModel.Set("Phong");
-        lMaterial->MultiLayer.Set(false);
-    }
-
-    lRootNode->AddChild(lNode);
+    m_sdkManager = FbxManager::Create();
+    m_scene = FbxScene::Create(m_sdkManager, "My Scene");
+    InitializeSdkObjects(m_sdkManager, m_scene);
 }
 
-void LDrawExporter::Export(MeshData *meshData, const char* outPath)
+void LDrawExporter::Export(LDrawFile* file, const char* outPath)
 {
-    FbxManager *lSdkManager = NULL;
-    FbxScene *lScene = NULL;
     bool lResult;
 
-    // Prepare the FBX SDK.
-    InitializeSdkObjects(lSdkManager, lScene);
+    FbxNode* lRootNode = m_scene->GetRootNode();
 
-    CreateMesh(lScene, meshData);
+    FbxNode* node = CreateNode(file);
+    lRootNode->AddChild(node);
 
     // Save the scene.
-    lResult = SaveScene(lSdkManager, lScene, outPath, 0);
+    lResult = SaveScene(m_sdkManager, m_scene, outPath, 0);
 
     if (lResult == false)
     {
         FBXSDK_printf("\n\nAn error occurred while saving the scene...\n");
-        DestroySdkObjects(lSdkManager, lResult);
+        DestroySdkObjects(m_sdkManager, lResult);
         exit(-1);
     }
 
     // Destroy all objects created by the FBX SDK.
-    DestroySdkObjects(lSdkManager, lResult);
+    DestroySdkObjects(m_sdkManager, lResult);
 }
 
-void LDrawExporter::Merge(LDrawFile& currentFile, MeshData* meshData, glm::mat4 transform)
+void LDrawExporter::LoadParts()
 {
-    for (SubFile s : currentFile.subFiles)
+    for (auto it = m_converter->nameResolver.begin(); it != m_converter->nameResolver.end(); it++)
     {
-        auto itSubFile = converter->fileCache.find(s.id);
-        if (itSubFile != converter->fileCache.end())
+        LDrawFile *ldrawFile = it->second;
+        if (ldrawFile->fileType == FILETYPE_PART)
         {
-            MergeRecursion(itSubFile->second, meshData, transform* s.transform, s.bfcInvert, s.color);
+            MeshData meshData;
+            MergeRecursion(ldrawFile, &meshData, glm::mat4(1.0f), false, 16);
+            FbxMesh* mesh = CreateMesh(&meshData);
+            partMap.emplace(ldrawFile, mesh);
         }
-        else
-            LogW("missing file during merge");
     }
 }
 
-void LDrawExporter::MergeRecursion(LDrawFile& currentFile, MeshData* meshData, glm::mat4 matToRoot, bool bfcInvert, ColorID color)
+FbxNode* LDrawExporter::CreateNode(LDrawFile* ldrawFile)
+{
+    FbxNode* node = FbxNode::Create(m_scene, "unnamed");
+
+    MeshData meshData;
+    MergeRecursion(ldrawFile, &meshData, glm::mat4(1.0f), false, 16);
+    //ReduceMesh(&meshData);
+    FbxMesh* mesh = CreateMesh(&meshData);
+    node->SetNodeAttribute(mesh);
+    
+    return node;
+}
+
+FbxMesh* LDrawExporter::CreateMesh(MeshData *meshData)
+{
+    FbxMesh *mesh = FbxMesh::Create(m_scene, "Mesh");
+    mesh->InitControlPoints(convSizetInt(meshData->vertices.size()));
+
+    mesh->InitControlPoints(meshData->vertices.size());
+    for (int i = 0; i < meshData->vertices.size(); ++i)
+    {
+        FbxVector4 vertex(meshData->vertices[i].x, meshData->vertices[i].y, meshData->vertices[i].z);
+        mesh->SetControlPointAt(vertex, i);
+    }
+
+
+     // Add faces to the mesh
+    for (int i = 0; i < meshData->faces.size(); ++i)
+    {
+        mesh->BeginPolygon();
+        mesh->AddPolygon(meshData->faces[i].x);
+        mesh->AddPolygon(meshData->faces[i].y);
+        mesh->AddPolygon(meshData->faces[i].z);
+        mesh->EndPolygon();
+    }
+
+    mesh->GenerateNormals();
+
+
+    return mesh;
+}
+
+void LDrawExporter::MergeRecursion(LDrawFile* currentFile, MeshData* meshData, glm::mat4 matToRoot, bool bfcInvert, ColorID color)
 {
     unsigned int rootVertexAmount = convSizetUint(meshData->vertices.size());
-    for (glm::vec3 v : currentFile.vertices)
-        meshData->vertices.push_back(matToRoot * glm::vec4(v, 1.0f));
-    for (glm::ivec3 f : currentFile.faces)
+    for(int i = 0; i < currentFile->vertices.size(); i++)
+    {
+        glm::vec4 vertex = glm::vec4(currentFile->vertices[i], 1.0f);
+        vertex = matToRoot * vertex;
+
+        meshData->vertices.push_back(glm::vec3(vertex.x, vertex.y, vertex.z));
+    }
+
+    for (Face& f : currentFile->faces)
     {
         //invert face direction
         if (bfcInvert == false)
-            meshData->faces.push_back(glm::ivec3(f.x + rootVertexAmount, f.y + rootVertexAmount, f.z + rootVertexAmount));
+            meshData->faces.push_back(glm::ivec3(f.vertexIndices.x + rootVertexAmount, f.vertexIndices.y + rootVertexAmount, f.vertexIndices.z + rootVertexAmount));
         else
-            meshData->faces.push_back(glm::ivec3(f.x + rootVertexAmount, f.z + rootVertexAmount, f.y + rootVertexAmount));
+            meshData->faces.push_back(glm::ivec3(f.vertexIndices.z + rootVertexAmount, f.vertexIndices.y + rootVertexAmount, f.vertexIndices.x + rootVertexAmount));
+
+        if (f.color == 16)
+            meshData->colors.push_back(color);
+        else
+            meshData->colors.push_back(f.color);
     }
-    // for (glm::vec3 n : currentFile.normals)
-    //     meshData->normals.push_back(matToRoot * glm::vec4(n, 0.0f));
-    // for (glm::vec2 uv : currentFile.uvs)
-    //     meshData->uvs.push_back(uv);
-    for (ColorID c : currentFile.colors)
+
+    for (SubFile& s : currentFile->subFiles)
     {
-        if (c == 16)
-            meshData->colors.push_back(converter->colorMap[color].color);
-        else
-            meshData->colors.push_back(converter->colorMap[c].color);
-    }
-    for (SubFile s : currentFile.subFiles)
-    {
-        auto itSubFile = converter->fileCache.find(s.id);
-        if (itSubFile != converter->fileCache.end())
-            MergeRecursion(itSubFile->second, meshData, matToRoot* s.transform, s.bfcInvert, s.color);
-        else
-            LogW("missing file during merge");
+        MergeRecursion(s.file, meshData, matToRoot* s.transform, s.bfcInvert != bfcInvert, s.color);
     }
 }

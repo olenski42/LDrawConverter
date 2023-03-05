@@ -9,5 +9,5 @@ struct MeshData
     std::vector<glm::ivec3> faces;
     // std::vector<glm::vec3> normals;
     // std::vector<glm::vec2> uvs;
-    std::vector<glm::vec3> colors;
+    std::vector<ColorID> colors;
 };
