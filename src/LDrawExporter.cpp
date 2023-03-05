@@ -100,20 +100,81 @@ void LDrawExporter::Export(LDrawFile *file, const char *outPath)
 
 void LDrawExporter::LoadMaterials()
 {
-    for(auto& material : m_converter->colorMap)
+    for (auto &material : m_converter->colorMap)
     {
         FbxSurfacePhong *fbxMaterial = FbxSurfacePhong::Create(m_scene, material.second.name.c_str());
-        fbxMaterial->Emissive.Set(FbxDouble3(0, 0, 0));
-        fbxMaterial->Ambient.Set(FbxDouble3(material.second.color.r, material.second.color.g, material.second.color.b));
-        fbxMaterial->Diffuse.Set(FbxDouble3(material.second.color.r, material.second.color.g, material.second.color.b));
-        fbxMaterial->Shininess.Set(0);
-        fbxMaterial->ReflectionFactor.Set(0);
-        fbxMaterial->TransparencyFactor.Set(0);
-        fbxMaterial->ShadingModel.Set("Phong");
-        fbxMaterial->MultiLayer.Set(false);
-        fbxMaterial->EmissiveFactor.Set(0);
-        fbxMaterial->AmbientFactor.Set(1);
-        fbxMaterial->DiffuseFactor.Set(1);
+        fbxMaterial->SetName(material.second.name.c_str());
+
+        FbxDouble3 color = FbxDouble3(material.second.color.r, material.second.color.g, material.second.color.b);
+        FbxDouble3 ambientColor(color[0] * 1.0, color[1] * 1.0, color[2] * 1.0);
+        FbxDouble3 diffuseColor(color[0] * 1.0, color[1] * 1.0, color[2] * 1.0);
+        FbxDouble3 specularColor(color[0] * 0.8, color[1] * 0.8, color[2] * 0.8);
+        FbxDouble3 reflectionColor(color[0] * 0.2, color[1] * 0.2, color[2] * 0.2);
+
+        float shininess = 20.0f;
+        float specular = 0.2f;
+        float reflection = 0.1f;
+
+        if (material.second.transparency)
+        {
+            fbxMaterial->TransparentColor.Set(color);
+            fbxMaterial->TransparencyFactor.Set(material.second.alpha);
+        }
+        if(material.second.glow)
+        {
+            fbxMaterial->Emissive.Set(color);
+            fbxMaterial->EmissiveFactor.Set(material.second.luminance);
+        }
+
+        if (material.second.metallic)
+        {
+            shininess = 50.0f;
+            specularColor = (color[0] * 0.5, color[1] * 0.5, color[2] * 0.5);
+            specular = 0.2f;
+            reflectionColor = (color[0] * 0.9, color[1] * 0.9, color[2] * 0.9);
+            reflection = 0.25f;
+        }
+        else if (material.second.rubber)
+        {
+            shininess = 2.0f;
+            specularColor = (color[0] * 0.01, color[1] * 0.01, color[2] * 0.01);
+            specular = 0.01f;
+            reflectionColor = (color[0] * 0.1, color[1] * 0.1, color[2] * 0.1);
+            reflection = 0.02f;
+        }
+        else if (material.second.chrome)
+        {
+            shininess = 500.0f;
+            specularColor = (color[0], color[1], color[2]);
+            specular = 0.9f;
+            reflectionColor = (color[0] * 0.9, color[1] * 0.9, color[2] * 0.9);
+            reflection = 0.9f;
+        }
+        else if (material.second.pearl) //TODO: actual perl material
+        {
+            shininess = 200.0f;
+            specularColor = (color[1], color[2], color[0]);
+            specular = 0.9f;
+            reflectionColor = (color[0] * 0.9, color[2] * 0.9, color[2] * 0.4);
+            reflection = 0.9f;
+        }
+        else if (material.second.matteMetallic)
+        {
+            shininess = 50.0f;
+            specularColor = (color[0] * 0.5, color[1] * 0.5, color[2] * 0.5);
+            specular = 0.2f;
+            reflectionColor = (color[0] * 0.9, color[1] * 0.9, color[2] * 0.9);
+            reflection = 0.25f;
+        }
+
+        fbxMaterial->Ambient.Set(ambientColor);
+        fbxMaterial->Diffuse.Set(diffuseColor);
+        fbxMaterial->Specular.Set(specularColor);
+        fbxMaterial->Reflection.Set(reflectionColor);
+
+        fbxMaterial->Shininess.Set(shininess);
+        fbxMaterial->SpecularFactor.Set(specular);
+        fbxMaterial->ReflectionFactor.Set(reflection);
 
         m_materialMap[material.first] = fbxMaterial;
     }
@@ -121,40 +182,39 @@ void LDrawExporter::LoadMaterials()
 
 FbxNode *LDrawExporter::CreateNode(LDrawFile *ldrawFile)
 {
-    if(m_materialMap.size() == 0)
+    if (m_materialMap.size() == 0)
     {
         m_converter->LoadColorFile();
         LoadMaterials();
     }
-    
+
     FbxNode *node = FbxNode::Create(m_scene, "unnamed");
 
     MeshData meshData;
     MergeRecursion(ldrawFile, &meshData);
     // ReduceMesh(&meshData);
 
-
     MeshColorMapped meshMapped = CreateMesh(&meshData);
     node->SetNodeAttribute(meshMapped.mesh);
 
     for (int i = 0; i < meshMapped.materialMap.size(); i++)
     {
-        if(meshMapped.materialMap[i] == 16)
+        if (meshMapped.materialMap[i] == 16)
         {
             LogW("Material 16");
             node->AddMaterial(m_materialMap[0]);
         }
         auto a = m_materialMap.find(meshMapped.materialMap[i]);
-        if(a == m_materialMap.end())
+        if (a == m_materialMap.end())
         {
-            LogE("Material not found");
+            LogW("Material " << meshMapped.materialMap[i] << " not found");
+            node->AddMaterial(m_materialMap[0]);
         }
         else
         {
             node->AddMaterial(a->second);
         }
     }
-    
 
     return node;
 }
@@ -174,7 +234,7 @@ LDrawExporter::MeshColorMapped LDrawExporter::CreateMesh(MeshData *meshData)
     // material mapping
     std::vector<ColorID> materialMap;
 
-    FbxGeometryElementMaterial* lMaterialElement = mesh->CreateElementMaterial();
+    FbxGeometryElementMaterial *lMaterialElement = mesh->CreateElementMaterial();
     lMaterialElement->SetMappingMode(FbxGeometryElement::eByPolygon);
     lMaterialElement->SetReferenceMode(FbxGeometryElement::eIndexToDirect);
 
@@ -182,14 +242,14 @@ LDrawExporter::MeshColorMapped LDrawExporter::CreateMesh(MeshData *meshData)
     for (int i = 0; i < meshData->faces.size(); ++i)
     {
         int colorIndex;
-        for(colorIndex = 0; colorIndex < materialMap.size(); colorIndex++)
+        for (colorIndex = 0; colorIndex < materialMap.size(); colorIndex++)
         {
             if (materialMap[colorIndex] == meshData->colors[i])
             {
                 break;
             }
         }
-        
+
         if (colorIndex == materialMap.size())
         {
             materialMap.push_back(meshData->colors[i]);
@@ -239,7 +299,6 @@ void CopyFromMesh(MeshData *meshDest, MeshData const *meshSource, glm::mat4 matT
     }
 }
 
-
 void LDrawExporter::CopyFromLDraw(LDrawFile const *currentFile, MeshData *meshData, glm::mat4 matToRoot, bool bfcInvert, ColorID color)
 {
     unsigned int rootVertexAmount = convSizetUint(meshData->vertices.size());
@@ -276,7 +335,7 @@ void LDrawExporter::MergeRecursion(LDrawFile *currentFile, MeshData *meshData, g
     // only copy from LDraw file if it is not a part (or has not been cached yet)
     if (currentFile->fileType == FILETYPE_PART)
     {
-        //get part from cache
+        // get part from cache
         MeshData *mesh;
 
         // create new mesh if does not already exist
