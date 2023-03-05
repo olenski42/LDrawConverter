@@ -231,7 +231,6 @@ bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileT
             std::transform(subFileName.begin(), subFileName.end(), subFileName.begin(), ::tolower);
 
             meshCount++;
-            LogI("Invertnext: " << invertNext);
             bool determinant = glm::determinant(transform) < 0;
             bool invert = invertNext != determinant;
             SubFile s = SubFile{GetFile(subFileName, nextFileType(fileType)), stoul(line[1]), transform, invert};
@@ -391,20 +390,20 @@ void LDrawConverter::LoadColorFile()
 
             glm::vec3 color;
             std::string tmp = line[6].substr(1, 2);
-            color.r = stof(tmp) / 255.0f;
+            color.r = stoul(tmp, nullptr, 16) / 255.0f;
             tmp = line[6].substr(3, 2);
-            color.g = stof(tmp) / 255.0f;
+            color.g = stoul(tmp, nullptr, 16) / 255.0f;
             tmp = line[6].substr(5, 2);
-            color.b = stof(tmp) / 255.0f;
+            color.b = stoul(tmp, nullptr, 16) / 255.0f;
 
 
             glm::vec3 edgeColor;
-            tmp = line[7].substr(1);
-            edgeColor.r = stof(tmp) / 255.0f;
             tmp = line[8].substr(1);
-            edgeColor.g = stof(tmp) / 255.0f;
-            tmp = line[9].substr(1);
-            edgeColor.b = stof(tmp) / 255.0f;
+            edgeColor.r = stoul(tmp, nullptr, 16) / 255.0f;
+            tmp = line[8].substr(1);
+            edgeColor.g = stoul(tmp, nullptr, 16) / 255.0f;
+            tmp = line[8].substr(1);
+            edgeColor.b = stoul(tmp, nullptr, 16) / 255.0f;
             
             colorMap[colorID] = LDrawColor();
             colorMap[colorID].name = name;

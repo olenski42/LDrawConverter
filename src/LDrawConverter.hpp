@@ -9,6 +9,7 @@
 
 
 inline unsigned int convSizetUint(size_t size);
+inline int convSizetInt(size_t size);
 
 
 class LDrawConverter
