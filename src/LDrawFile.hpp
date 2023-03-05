@@ -11,6 +11,17 @@ struct LDrawColor
     std::string name;
     glm::vec3 color;
     glm::vec3 edgeColor;
+    float alpha;
+    float luminance;
+
+    bool transparency = false;
+    bool glow = false;
+
+    bool chrome = false;
+    bool pearl = false;
+    bool rubber = false;
+    bool matteMetallic = false;
+    bool metallic = false;
 };
 
 enum FileType
