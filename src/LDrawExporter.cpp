@@ -1,7 +1,10 @@
 #include "LDrawExporter.hpp"
 #include <vector>
 #include "Common/Common.h"
-#include "glm/glm.hpp"
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 #include <queue>
 
 void ReduceMesh(MeshData *meshData)
@@ -73,19 +76,26 @@ LDrawExporter::LDrawExporter(LDrawConverter *converter)
     m_sdkManager = FbxManager::Create();
     m_scene = FbxScene::Create(m_sdkManager, "My Scene");
     InitializeSdkObjects(m_sdkManager, m_scene);
+    m_converterManager = new FbxGeometryConverter(m_sdkManager);
 }
 
-void LDrawExporter::Export(LDrawFile *file, const char *outPath)
+void LDrawExporter::Export(LDrawFile *file, std::string outPath)
 {
+    if(m_materialMap.size() == 0)
+    {
+        m_converter->LoadColorFile();
+        LoadMaterials();
+    }
+
     bool lResult;
-
     FbxNode *lRootNode = m_scene->GetRootNode();
-
-    FbxNode *node = CreateNode(file);
+    FbxNode *node = ConvertFile(file);
+    node->LclRotation.Set(FbxDouble3(0, 0, -180));
     lRootNode->AddChild(node);
 
     // Save the scene.
-    lResult = SaveScene(m_sdkManager, m_scene, outPath, 0);
+    LogI("Saving scene to \"" << outPath << "\"...");
+    lResult = SaveScene(m_sdkManager, m_scene, outPath.c_str(), 0);
 
     if (lResult == false)
     {
@@ -100,6 +110,14 @@ void LDrawExporter::Export(LDrawFile *file, const char *outPath)
 
 void LDrawExporter::LoadMaterials()
 {
+    LogI("Loading materials...");
+
+    if(m_converter->colorMap.size() == 0)
+    {
+        LogE("No materials loaded!");
+        return;
+    }
+
     for (auto &material : m_converter->colorMap)
     {
         FbxSurfacePhong *fbxMaterial = FbxSurfacePhong::Create(m_scene, material.second.name.c_str());
@@ -120,7 +138,7 @@ void LDrawExporter::LoadMaterials()
             fbxMaterial->TransparentColor.Set(color);
             fbxMaterial->TransparencyFactor.Set(material.second.alpha);
         }
-        if(material.second.glow)
+        if (material.second.glow)
         {
             fbxMaterial->Emissive.Set(color);
             fbxMaterial->EmissiveFactor.Set(material.second.luminance);
@@ -150,7 +168,7 @@ void LDrawExporter::LoadMaterials()
             reflectionColor = (color[0] * 0.9, color[1] * 0.9, color[2] * 0.9);
             reflection = 0.9f;
         }
-        else if (material.second.pearl) //TODO: actual perl material
+        else if (material.second.pearl) // TODO: actual perl material
         {
             shininess = 200.0f;
             specularColor = (color[1], color[2], color[0]);
@@ -180,34 +198,172 @@ void LDrawExporter::LoadMaterials()
     }
 }
 
-FbxNode *LDrawExporter::CreateNode(LDrawFile *ldrawFile)
+FbxNode *LDrawExporter::ConvertFile(LDrawFile *ldrFile)
 {
-    if (m_materialMap.size() == 0)
+    FbxNode *node;
+    if (mergeAll)
     {
-        m_converter->LoadColorFile();
-        LoadMaterials();
+        MeshData* rootMesh = CreateMeshDataFromLDraw(ldrFile);
+        for(auto &subFile : ldrFile->subFiles)
+        {
+            AddSubFileToMeshDataRecursion(&subFile, rootMesh, {subFile.transform, subFile.bfcInvert, subFile.color == 16 ? 0 : subFile.color});
+        }
+        
+        MeshColorMapped meshMapped = CreateMeshMappedFromMeshData(rootMesh);
+        node = CreateNodeFromMeshMapped(&meshMapped);
+    }
+    else
+    {
+        LogE("Invalid merge settings!");
     }
 
-    FbxNode *node = FbxNode::Create(m_scene, "unnamed");
+    return node;
+}
 
-    MeshData meshData;
-    MergeRecursion(ldrawFile, &meshData);
-    // ReduceMesh(&meshData);
-
-    MeshColorMapped meshMapped = CreateMesh(&meshData);
-    node->SetNodeAttribute(meshMapped.mesh);
-
-    for (int i = 0; i < meshMapped.materialMap.size(); i++)
+void LDrawExporter::AddSubFileToMeshDataRecursion(SubFile *thisInstance, MeshData *rootMeshData, MeshCarryInfo carryInfo)
+{
+    MergeLDrawIntoMeshData(rootMeshData, thisInstance->file, carryInfo);
+    for (auto &subFile : thisInstance->file->subFiles)
     {
-        if (meshMapped.materialMap[i] == 16)
+        AddSubFileToMeshDataRecursion(&subFile, rootMeshData, {carryInfo.matToRoot * subFile.transform, carryInfo.bfcInvert != subFile.bfcInvert, subFile.color == 16 ? carryInfo.color : subFile.color});
+    }
+}
+
+void LDrawExporter::ConvertFileRecursion(SubFile *thisInstance, MeshData *parentMeshData, FbxNode *parentNode, MeshCarryInfo carryInfo)
+{
+    LogE("Not implemented yet!");
+}
+
+void LDrawExporter::MergeLDrawIntoMeshData(MeshData *meshDest, LDrawFile const *ldrawSource, MeshCarryInfo carryInfo)
+{
+    unsigned int rootVertexAmount = convSizetUint(meshDest->vertices.size());
+    for (int i = 0; i < ldrawSource->vertices.size(); i++)
+    {
+        glm::vec4 vertex = glm::vec4(ldrawSource->vertices[i], 1.0f);
+        vertex = carryInfo.matToRoot * vertex;
+
+        meshDest->vertices.push_back(glm::vec3(vertex.x, vertex.y, vertex.z));
+    }
+
+    for (const Face &f : ldrawSource->faces)
+    {
+        // invert face direction
+        if (carryInfo.bfcInvert == false)
+            meshDest->faces.push_back(glm::ivec3(f.vertexIndices.x + rootVertexAmount, f.vertexIndices.y + rootVertexAmount, f.vertexIndices.z + rootVertexAmount));
+        else
+            meshDest->faces.push_back(glm::ivec3(f.vertexIndices.z + rootVertexAmount, f.vertexIndices.y + rootVertexAmount, f.vertexIndices.x + rootVertexAmount));
+
+        if (f.color == 16)
+            meshDest->colors.push_back(carryInfo.color);
+        else
+            meshDest->colors.push_back(f.color);
+    }
+}
+
+void LDrawExporter::MergeMeshDataIntoMeshData(MeshData *meshDest, MeshData const *meshSource, MeshCarryInfo carryInfo)
+{
+    unsigned int rootVertexAmount = convSizetUint(meshDest->vertices.size());
+    for (int i = 0; i < meshSource->vertices.size(); i++)
+    {
+        glm::vec4 vertex = glm::vec4(meshSource->vertices[i], 1.0f);
+        vertex = carryInfo.matToRoot * vertex;
+
+        meshDest->vertices.push_back(glm::vec3(vertex.x, vertex.y, vertex.z));
+    }
+
+    for (const glm::ivec3 &f : meshSource->faces)
+    {
+        // invert face direction
+        if (carryInfo.bfcInvert == false)
+            meshDest->faces.push_back(glm::ivec3(f.x + rootVertexAmount, f.y + rootVertexAmount, f.z + rootVertexAmount));
+        else
+            meshDest->faces.push_back(glm::ivec3(f.z + rootVertexAmount, f.y + rootVertexAmount, f.x + rootVertexAmount));
+    }
+
+    for (const ColorID &c : meshSource->colors)
+    {
+        if (c == 16)
+            meshDest->colors.push_back(carryInfo.color);
+        else
+            meshDest->colors.push_back(c);
+    }
+}
+
+LDrawExporter::MeshColorMapped LDrawExporter::CreateMeshMappedFromMeshData(MeshData const *meshSource)
+{
+    MeshColorMapped meshMapped = MeshColorMapped();
+    meshMapped.mesh = FbxMesh::Create(m_scene, "");
+
+    meshMapped.mesh->InitControlPoints(convSizetInt(meshSource->vertices.size()));
+
+    for (int i = 0; i < meshSource->vertices.size(); ++i)
+    {
+        FbxVector4 vertex(meshSource->vertices[i].x, meshSource->vertices[i].y, meshSource->vertices[i].z);
+        meshMapped.mesh->SetControlPointAt(vertex, i);
+    }
+
+    FbxGeometryElementMaterial *lMaterialElement = meshMapped.mesh->CreateElementMaterial();
+    lMaterialElement->SetMappingMode(FbxGeometryElement::eByPolygon);
+    lMaterialElement->SetReferenceMode(FbxGeometryElement::eIndexToDirect);
+
+    if (meshSource->faces.size() != meshSource->colors.size())
+    {
+        LogE("MeshData has different amount of faces and colors");
+    }
+
+    // Add faces to the mesh
+    for (int i = 0; i < meshSource->faces.size(); i++)
+    {
+        int colorIndex;
+        for (colorIndex = 0; colorIndex < meshMapped.materialMap.size(); colorIndex++)
+        {
+            if (meshMapped.materialMap[colorIndex] == meshSource->colors[i])
+            {
+                break;
+            }
+        }
+
+        if (colorIndex == meshMapped.materialMap.size())
+        {
+            meshMapped.materialMap.push_back(meshSource->colors[i]);
+        }
+
+        meshMapped.mesh->BeginPolygon(colorIndex);
+        meshMapped.mesh->AddPolygon(meshSource->faces[i].x);
+        meshMapped.mesh->AddPolygon(meshSource->faces[i].y);
+        meshMapped.mesh->AddPolygon(meshSource->faces[i].z);
+        meshMapped.mesh->EndPolygon();
+    }
+
+    meshMapped.mesh->GenerateNormals();
+
+    return meshMapped;
+}
+
+FbxNode *LDrawExporter::CreateNodeFromMeshMapped(LDrawExporter::MeshColorMapped const *meshMappedSource, std::string name, LDrawExporter::MeshCarryInfo carryInfo)
+{
+    FbxNode *node = FbxNode::Create(m_scene, name.c_str());
+    node->SetNodeAttribute(meshMappedSource->mesh);
+
+    // set Materials
+    for (int i = 0; i < meshMappedSource->materialMap.size(); i++)
+    {
+        ColorID color = meshMappedSource->materialMap[i];
+
+        if (color == 16)
+            color = carryInfo.color;
+
+        if (color == 16)
         {
             LogW("Material 16");
             node->AddMaterial(m_materialMap[0]);
+            continue;
         }
-        auto a = m_materialMap.find(meshMapped.materialMap[i]);
+
+        auto a = m_materialMap.find(color);
         if (a == m_materialMap.end())
         {
-            LogW("Material " << meshMapped.materialMap[i] << " not found");
+            LogW("Material " << meshMappedSource->materialMap[i] << " not found");
             node->AddMaterial(m_materialMap[0]);
         }
         else
@@ -219,145 +375,9 @@ FbxNode *LDrawExporter::CreateNode(LDrawFile *ldrawFile)
     return node;
 }
 
-LDrawExporter::MeshColorMapped LDrawExporter::CreateMesh(MeshData *meshData)
+MeshData* LDrawExporter::CreateMeshDataFromLDraw(LDrawFile *ldrFile)
 {
-    FbxMesh *mesh = FbxMesh::Create(m_scene, "Mesh");
-    mesh->InitControlPoints(convSizetInt(meshData->vertices.size()));
-
-    mesh->InitControlPoints(convSizetInt(meshData->vertices.size()));
-    for (int i = 0; i < meshData->vertices.size(); ++i)
-    {
-        FbxVector4 vertex(meshData->vertices[i].x, meshData->vertices[i].y, meshData->vertices[i].z);
-        mesh->SetControlPointAt(vertex, i);
-    }
-
-    // material mapping
-    std::vector<ColorID> materialMap;
-
-    FbxGeometryElementMaterial *lMaterialElement = mesh->CreateElementMaterial();
-    lMaterialElement->SetMappingMode(FbxGeometryElement::eByPolygon);
-    lMaterialElement->SetReferenceMode(FbxGeometryElement::eIndexToDirect);
-
-    // Add faces to the mesh
-    for (int i = 0; i < meshData->faces.size(); ++i)
-    {
-        int colorIndex;
-        for (colorIndex = 0; colorIndex < materialMap.size(); colorIndex++)
-        {
-            if (materialMap[colorIndex] == meshData->colors[i])
-            {
-                break;
-            }
-        }
-
-        if (colorIndex == materialMap.size())
-        {
-            materialMap.push_back(meshData->colors[i]);
-        }
-
-        mesh->BeginPolygon(colorIndex);
-        mesh->AddPolygon(meshData->faces[i].x);
-        mesh->AddPolygon(meshData->faces[i].y);
-        mesh->AddPolygon(meshData->faces[i].z);
-        mesh->EndPolygon();
-    }
-
-    mesh->GenerateNormals();
-
-    MeshColorMapped meshMapped;
-    meshMapped.mesh = mesh;
-    meshMapped.materialMap = materialMap;
-    return meshMapped;
-}
-
-void CopyFromMesh(MeshData *meshDest, MeshData const *meshSource, glm::mat4 matToRoot, bool bfcInvert, bool bcfInvert, ColorID color)
-{
-    unsigned int rootVertexAmount = convSizetUint(meshDest->vertices.size());
-    for (int i = 0; i < meshSource->vertices.size(); i++)
-    {
-        glm::vec4 vertex = glm::vec4(meshSource->vertices[i], 1.0f);
-        vertex = matToRoot * vertex;
-
-        meshDest->vertices.push_back(glm::vec3(vertex.x, vertex.y, vertex.z));
-    }
-
-    for (const glm::ivec3 &f : meshSource->faces)
-    {
-        // invert face direction
-        if (bfcInvert == false)
-            meshDest->faces.push_back(glm::ivec3(f.x + rootVertexAmount, f.y + rootVertexAmount, f.z + rootVertexAmount));
-        else
-            meshDest->faces.push_back(glm::ivec3(f.z + rootVertexAmount, f.y + rootVertexAmount, f.x + rootVertexAmount));
-    }
-
-    for (const ColorID &c : meshSource->colors)
-    {
-        if (c == 16)
-            meshDest->colors.push_back(color);
-        else
-            meshDest->colors.push_back(c);
-    }
-}
-
-void LDrawExporter::CopyFromLDraw(LDrawFile const *currentFile, MeshData *meshData, glm::mat4 matToRoot, bool bfcInvert, ColorID color)
-{
-    unsigned int rootVertexAmount = convSizetUint(meshData->vertices.size());
-    for (int i = 0; i < currentFile->vertices.size(); i++)
-    {
-        glm::vec4 vertex = glm::vec4(currentFile->vertices[i], 1.0f);
-        vertex = matToRoot * vertex;
-
-        meshData->vertices.push_back(glm::vec3(vertex.x, vertex.y, vertex.z));
-    }
-
-    for (const Face &f : currentFile->faces)
-    {
-        // invert face direction
-        if (bfcInvert == false)
-            meshData->faces.push_back(glm::ivec3(f.vertexIndices.x + rootVertexAmount, f.vertexIndices.y + rootVertexAmount, f.vertexIndices.z + rootVertexAmount));
-        else
-            meshData->faces.push_back(glm::ivec3(f.vertexIndices.z + rootVertexAmount, f.vertexIndices.y + rootVertexAmount, f.vertexIndices.x + rootVertexAmount));
-
-        if (f.color == 16)
-            meshData->colors.push_back(color);
-        else
-            meshData->colors.push_back(f.color);
-    }
-
-    for (const SubFile &s : currentFile->subFiles)
-    {
-        MergeRecursion(s.file, meshData, matToRoot * s.transform, s.bfcInvert != bfcInvert, s.color);
-    }
-}
-
-void LDrawExporter::MergeRecursion(LDrawFile *currentFile, MeshData *meshData, glm::mat4 matToRoot, bool bfcInvert, ColorID color)
-{
-    // only copy from LDraw file if it is not a part (or has not been cached yet)
-    if (currentFile->fileType == FILETYPE_PART)
-    {
-        // get part from cache
-        MeshData *mesh;
-
-        // create new mesh if does not already exist
-        if (partMap.find(currentFile) == partMap.end())
-        {
-            mesh = new MeshData();
-            CopyFromLDraw(currentFile, mesh, glm::mat4(1.0f), bfcInvert, color); // calls MergeRecursion
-        }
-
-        // use existing mesh
-        else
-        {
-            mesh = partMap[currentFile];
-        }
-
-        // merge mesh to root mesh
-        CopyFromMesh(meshData, mesh, matToRoot, bfcInvert, bfcInvert, color);
-    }
-
-    // copy from LDraw file
-    else
-    {
-        CopyFromLDraw(currentFile, meshData, matToRoot, bfcInvert, color); // calls MergeRecursion
-    }
+    MeshData *meshData = new MeshData();
+    MergeLDrawIntoMeshData(meshData, ldrFile, MeshCarryInfo());
+    return meshData;
 }
