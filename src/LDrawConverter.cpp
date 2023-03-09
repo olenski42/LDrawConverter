@@ -70,6 +70,7 @@ LDrawFile *LDrawConverter::GetFile(std::string path, FileType fileType)
     if (itToFile == nameResolver.end())
     {
         file = new LDrawFile();
+        file->name = path;
         nameResolver.insert(std::pair<std::string, LDrawFile *>(path, file));
 
         std::transform(path.begin(), path.end(), path.begin(), ::tolower);
