@@ -181,6 +181,7 @@ bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileT
                     LDrawFile *currentSubFile = GetFile(currentFileName, FILETYPE_MULTIPART);
                     currentFile = currentSubFile;
                 }
+                currentFile->name = currentFileName;
 
                 // TODO: set root file
 
