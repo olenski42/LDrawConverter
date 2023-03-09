@@ -55,6 +55,7 @@ struct Face
 
 struct LDrawFile
 {
+    std::string name;
     FileType fileType;
     std::vector<SubFile> subFiles;
     std::vector<Face> faces;
