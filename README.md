@@ -11,7 +11,7 @@ converts LDraw files to fbx
 - Edit the main.cpp and set the correct paths. (This is a WIP, a file dialog will (maybe) follow)
 
 ## Goal
-Exporting ldraw files to fbx, optimized for games/ rendering and automating the export of skeletons.
+Exporting ldraw files to fbx, optimized for games/ rendering and automating the creation of skeletons.
 
 ## Features
 - Export as single Mesh
