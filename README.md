@@ -16,7 +16,7 @@ Exporting ldraw files to fbx, optimized for games/ rendering and automating the 
 ## Features
 - Export as single Mesh
 - Export with instanced parts (aka. bricks)
-- export with fbx nodes for every part (use this if you want to use your file in blender. Alternitivly try to change the fbx version in the sdk to use instancing)
+- Export with fbx nodes for every part (use this if you want to use your file in blender. Alternitivly try to change the fbx version in the sdk to use instancing)
 
 ## TODO
 - Mesh Optimizations
