@@ -1,7 +1,7 @@
 # LDrawConverter
 converts LDraw files to fbx
 
-**WIP, instancing causes materials to be mapped incorrectly in blender, in unreal it is correct tho.**
+**WIP, instancing causes materials to be mapped incorrectly in blender, in unreal it is correct tho. (probably too new fbx version for blender)**
 
 ## Compilation & Usage
 - Install the [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2020-0) if you haven't already.
