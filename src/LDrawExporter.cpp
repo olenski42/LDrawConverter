@@ -7,7 +7,7 @@
 #include <glm/gtx/matrix_decompose.hpp>
 #include <queue>
 
-void ReduceMesh(MeshData *meshData)
+inline void ReduceMesh(MeshData *meshData)
 {
     std::vector<glm::vec3> vertices;
     std::vector<glm::ivec3> faces;
@@ -52,6 +52,22 @@ void ReduceMesh(MeshData *meshData)
     meshData->colors = colors;
 }
 
+inline FbxAMatrix GetMatrix(glm::mat4 mat)
+{
+    glm::vec3 translation;
+    glm::vec3 scale;
+    glm::quat rotation;
+    glm::vec3 skew;
+    glm::vec4 perspective;
+    glm::decompose(mat, scale, rotation, translation, skew, perspective);
+
+    FbxVector4 fbxTranslation(translation.x, translation.y, translation.z);
+    FbxVector4 fbxScale(scale.x, scale.y, scale.z);
+    FbxQuaternion fbxRotation(rotation.x, rotation.y, rotation.z, rotation.w);
+
+    return FbxAMatrix(fbxTranslation, fbxRotation, fbxScale);
+}
+
 inline unsigned int convSizetUint(size_t size)
 {
     if (size > UINT_MAX)
@@ -81,7 +97,7 @@ LDrawExporter::LDrawExporter(LDrawConverter *converter)
 
 void LDrawExporter::Export(LDrawFile *file, std::string outPath)
 {
-    if(m_materialMap.size() == 0)
+    if (m_materialMap.size() == 0)
     {
         m_converter->LoadColorFile();
         LoadMaterials();
@@ -99,9 +115,8 @@ void LDrawExporter::Export(LDrawFile *file, std::string outPath)
 
     if (lResult == false)
     {
-        FBXSDK_printf("\n\nAn error occurred while saving the scene...\n");
         DestroySdkObjects(m_sdkManager, lResult);
-        exit(-1);
+        LogE("An error occurred while saving the scene!");
     }
 
     // Destroy all objects created by the FBX SDK.
@@ -112,7 +127,7 @@ void LDrawExporter::LoadMaterials()
 {
     LogI("Loading materials...");
 
-    if(m_converter->colorMap.size() == 0)
+    if (m_converter->colorMap.size() == 0)
     {
         LogE("No materials loaded!");
         return;
@@ -198,24 +213,42 @@ void LDrawExporter::LoadMaterials()
     }
 }
 
+void printChildrenMaterialAmount(FbxNode *node, int level = 0)
+{
+    for (int i = 0; i < node->GetChildCount(); i++)
+    {
+        FbxNode *n = node->GetChild(i);
+        LogI(level << ": " << n->GetName() << " " << n->GetMaterialCount());
+        printChildrenMaterialAmount(n, level + 1);
+    }
+}
+
 FbxNode *LDrawExporter::ConvertFile(LDrawFile *ldrFile)
 {
+    LogI("Converting file...");
     FbxNode *node;
     if (mergeAll)
     {
-        MeshData* rootMesh = CreateMeshDataFromLDraw(ldrFile);
-        for(auto &subFile : ldrFile->subFiles)
-        {
-            AddSubFileToMeshDataRecursion(&subFile, rootMesh, {subFile.transform, subFile.bfcInvert, subFile.color == 16 ? 0 : subFile.color});
-        }
-        
-        MeshColorMapped meshMapped = CreateMeshMappedFromMeshData(rootMesh);
-        node = CreateNodeFromMeshMapped(&meshMapped);
+        MeshData rootMesh;
+        SubFile rootSubFile = {ldrFile, 16, glm::mat4(1.0f), false};
+        AddSubFileToMeshDataRecursion(&rootSubFile, &rootMesh, MeshCarryInfo());
+
+        MeshColorMapped meshMapped = CreateMeshMappedFromMeshData(&rootMesh);
+        node = CreateNodeFromMeshMapped(&meshMapped, ldrFile->name.c_str(), 16);
+    }
+    else if (allNodes)
+    {
+        node = FbxNode::Create(m_scene, ldrFile->name.c_str());
+
+        SubFile rootSubFile = {ldrFile, 16, glm::mat4(1.0f), false};
+        CreateNodeTreeRecursion(&rootSubFile, node, MeshCarryInfo());
     }
     else
     {
         LogE("Invalid merge settings!");
     }
+
+    // printChildrenMaterialAmount(node);
 
     return node;
 }
@@ -227,6 +260,62 @@ void LDrawExporter::AddSubFileToMeshDataRecursion(SubFile *thisInstance, MeshDat
     {
         AddSubFileToMeshDataRecursion(&subFile, rootMeshData, {carryInfo.matToRoot * subFile.transform, carryInfo.bfcInvert != subFile.bfcInvert, subFile.color == 16 ? carryInfo.color : subFile.color});
     }
+}
+
+void LDrawExporter::CreateNodeTreeRecursion(SubFile *thisInstance, FbxNode *parentNode, MeshCarryInfo carryInfo)
+{
+    FbxNode *node;
+    if (thisInstance->file->fileType == FILETYPE_PART)
+    {
+        MeshColorMapped meshMapped;
+        if (cachePartMeshMaps)
+        {
+            auto it = m_meshMap.find(thisInstance->file);
+            if (it != m_meshMap.end())
+            {
+                meshMapped = it->second;
+            }
+            else
+            {
+                MeshData rootMesh;
+
+                AddSubFileToMeshDataRecursion(thisInstance, &rootMesh, {glm::mat4(1.0f), false, 16});
+
+                meshMapped = CreateMeshMappedFromMeshData(&rootMesh);
+                m_meshMap[thisInstance->file] = meshMapped;
+            }
+        }
+        else
+        {
+            MeshData rootMesh;
+
+            AddSubFileToMeshDataRecursion(thisInstance, &rootMesh, {glm::mat4(1.0f), false, 16});
+
+            meshMapped = CreateMeshMappedFromMeshData(&rootMesh);
+        }
+
+        node = CreateNodeFromMeshMapped(&meshMapped, thisInstance->file->name.c_str(), carryInfo.color);
+    }
+    else if (thisInstance->file->fileType == FILETYPE_PRIMITIVE)
+    {
+        LogE("CreateNotRecurson should not be called on primitives!");
+    }
+    else
+    {
+        node = FbxNode::Create(m_scene, thisInstance->file->name.c_str());
+
+        for (auto &subFile : thisInstance->file->subFiles)
+        {
+            CreateNodeTreeRecursion(&subFile, node, {carryInfo.matToRoot * subFile.transform, carryInfo.bfcInvert != subFile.bfcInvert, subFile.color == 16 ? carryInfo.color : subFile.color});
+        }
+    }
+
+    FbxAMatrix mat = GetMatrix(thisInstance->transform);
+    node->LclTranslation.Set(mat.GetT());
+    node->LclScaling.Set(mat.GetS());
+    node->LclRotation.Set(mat.GetR());
+
+    parentNode->AddChild(node);
 }
 
 void LDrawExporter::ConvertFileRecursion(SubFile *thisInstance, MeshData *parentMeshData, FbxNode *parentNode, MeshCarryInfo carryInfo)
@@ -293,6 +382,12 @@ LDrawExporter::MeshColorMapped LDrawExporter::CreateMeshMappedFromMeshData(MeshD
 {
     MeshColorMapped meshMapped = MeshColorMapped();
     meshMapped.mesh = FbxMesh::Create(m_scene, "");
+    auto lLayer = meshMapped.mesh->GetLayer(0);
+    if (lLayer == nullptr)
+    {
+        meshMapped.mesh->CreateLayer();
+        lLayer = meshMapped.mesh->GetLayer(0);
+    }
 
     meshMapped.mesh->InitControlPoints(convSizetInt(meshSource->vertices.size()));
 
@@ -302,9 +397,11 @@ LDrawExporter::MeshColorMapped LDrawExporter::CreateMeshMappedFromMeshData(MeshD
         meshMapped.mesh->SetControlPointAt(vertex, i);
     }
 
-    FbxGeometryElementMaterial *lMaterialElement = meshMapped.mesh->CreateElementMaterial();
-    lMaterialElement->SetMappingMode(FbxGeometryElement::eByPolygon);
-    lMaterialElement->SetReferenceMode(FbxGeometryElement::eIndexToDirect);
+    // Set material indices
+    FbxLayerElementMaterial *lMaterialLayer = FbxLayerElementMaterial::Create(meshMapped.mesh, "MaterialIndices");
+    lMaterialLayer->SetMappingMode(FbxLayerElement::eByPolygon);
+    lMaterialLayer->SetReferenceMode(FbxLayerElement::eIndexToDirect);
+    lLayer->SetMaterials(lMaterialLayer);
 
     if (meshSource->faces.size() != meshSource->colors.size())
     {
@@ -340,9 +437,10 @@ LDrawExporter::MeshColorMapped LDrawExporter::CreateMeshMappedFromMeshData(MeshD
     return meshMapped;
 }
 
-FbxNode *LDrawExporter::CreateNodeFromMeshMapped(LDrawExporter::MeshColorMapped const *meshMappedSource, std::string name, LDrawExporter::MeshCarryInfo carryInfo)
+FbxNode *LDrawExporter::CreateNodeFromMeshMapped(LDrawExporter::MeshColorMapped const *meshMappedSource, std::string name, ColorID carryColor)
 {
     FbxNode *node = FbxNode::Create(m_scene, name.c_str());
+    node->SetShadingMode(FbxNode::eTextureShading);
     node->SetNodeAttribute(meshMappedSource->mesh);
 
     // set Materials
@@ -351,7 +449,9 @@ FbxNode *LDrawExporter::CreateNodeFromMeshMapped(LDrawExporter::MeshColorMapped 
         ColorID color = meshMappedSource->materialMap[i];
 
         if (color == 16)
-            color = carryInfo.color;
+        {
+            color = carryColor;
+        }
 
         if (color == 16)
         {
@@ -373,11 +473,4 @@ FbxNode *LDrawExporter::CreateNodeFromMeshMapped(LDrawExporter::MeshColorMapped 
     }
 
     return node;
-}
-
-MeshData* LDrawExporter::CreateMeshDataFromLDraw(LDrawFile *ldrFile)
-{
-    MeshData *meshData = new MeshData();
-    MergeLDrawIntoMeshData(meshData, ldrFile, MeshCarryInfo());
-    return meshData;
 }

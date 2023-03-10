@@ -53,17 +53,20 @@ private:
      */
     void ConvertFileRecursion(SubFile *thisInstance, MeshData *parentMeshData, FbxNode *parentNode, MeshCarryInfo carryInfo);
     void AddSubFileToMeshDataRecursion(SubFile *thisInstance, MeshData *rootMeshData, MeshCarryInfo carryInfo);
+    void CreateNodeTreeRecursion(SubFile *thisInstance, FbxNode *parentNode, MeshCarryInfo carryInfo);
 
     // merge settings
-    bool mergeAll = true;
-    bool cachePartData = false;
+    bool allNodes = true;
+    bool mergeAll = false;
+    bool cachePartMeshData = false;
     bool cachePrimitiveData = false;
-    bool cachePartMeshMaps = false;
+    bool cachePartMeshMaps = true;
 
     // helper functions
     inline void MergeLDrawIntoMeshData(MeshData *meshDest, LDrawFile const *ldrawSource, MeshCarryInfo carryInfo);
     inline void MergeMeshDataIntoMeshData(MeshData *meshDest, MeshData const *meshSource, MeshCarryInfo carryInfo);
     inline MeshColorMapped CreateMeshMappedFromMeshData(MeshData const *meshSource);
-    inline FbxNode *CreateNodeFromMeshMapped(MeshColorMapped const *meshMappedSource, std::string name = "unnamed", LDrawExporter::MeshCarryInfo carryInfo = MeshCarryInfo());
-    inline MeshData* CreateMeshDataFromLDraw(LDrawFile *ldrFile);
+    inline MeshColorMapped CreateMeshMappedFromLDraw(LDrawFile const *ldrawSource, LDrawExporter::MeshCarryInfo carryInfo);
+    inline FbxNode *CreateNodeFromMeshMapped(MeshColorMapped const *meshMappedSource, std::string name, ColorID carryColor);
+    //inline FbxNode *CreateNodeFromLDraw(LDrawFile const *ldrawSource, std::string name, LDrawExporter::MeshCarryInfo carryInfo);
 };
