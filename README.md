@@ -23,5 +23,6 @@ Exporting ldraw files to fbx, optimized for games/ rendering and automating the 
 - more accurate materials
 - edge beveling
 - edge smoothing
+- custom part sized (e.g. scaling all slightly down for gaps, not wanted in games tho, edge beveling preferred for lighting and unreals nanite as gaps increase rendered meshes)
 - using submodel names for automatic rigging for minifigurines, vehecles, ...
 - using submodel names for defining which models to create (e.g. creating a modular building in studio and exporting all of the submodels as single files)
