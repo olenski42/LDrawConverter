@@ -318,7 +318,7 @@ std::ifstream LDrawConverter::FindFile(UnresolvedFile *file)
 
     if (stream.is_open() == false)
     {
-        LogW("file \"" << path << "\" not found, extending search");
+        //LogW("file \"" << path << "\" not found, extending search");
         file->fileType = FILETYPE_MULTIPART;
     }
     while (stream.is_open() == false && file->fileType > 0)
