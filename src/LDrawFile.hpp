@@ -28,7 +28,7 @@ enum FileType
 {
     FILETYPE_PRIMITIVE,
     FILETYPE_PART,
-    FILETYPE_SUBPART,
+    FILETYPE_SUBMODEL,
     FILETYPE_MULTIPART,
     FILETYPE_AMOUNT // This is not a valid file type, it is used to get the amount of file types
 };
