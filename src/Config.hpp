@@ -57,6 +57,7 @@ private:
 
     void getLibraryPath()
     {
+        LogI("Select LDraw library folder")
         ldrawLibraryPath = pfd::select_folder("Select LDraw library folder", ".").result();
 
         // convert \\ to /
