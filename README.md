@@ -30,5 +30,5 @@ I started this project because of certain features that i could not add to other
 - edge beveling
 - advanced edge beveling with detection to avoid leaving gaps
 - using submodel names for automatic rigging (minifigurines, vehecles, ...)
-- using submodel names for defining which models to create (e.g. creating a modular building in studio and exporting all of the submodels as single files)
+- add bones for connections
 - make unreal use correct materials (emission, transparency, ...), not just the color data
