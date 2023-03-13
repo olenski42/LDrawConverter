@@ -46,7 +46,7 @@ private:
     // merge settings
     FileType exportDepth = FILETYPE_SUBPART;
     // which file types to cache, export depth must be at least as high to cache it
-    bool cacheFiles[FILETYPE_AMOUNT] = { true, true, false, false }; // primitive, part, subpart, multipart
+    bool cacheFiles[FILETYPE_AMOUNT] = { false, true, false, false }; // primitive, part, subpart, multipart
     float partSize = 0.99f;
 
     // helper functions
