@@ -22,6 +22,7 @@ I started this project because of certain features that i could not add to other
 - support for the unofficial LDraw library
 
 ## TODO
+- support for other export formats supported by the fbx sdk(obj, collada)
 - set export settings without recompiling
 - remove occluded studs
 - remove occluded faces alltogether
