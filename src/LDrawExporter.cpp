@@ -90,13 +90,14 @@ inline int convSizetInt(size_t size)
 LDrawExporter::LDrawExporter(LDrawConverter *converter)
     : m_converter(converter)
 {
+    LogI("Initializing FBX SDK...");
     m_sdkManager = FbxManager::Create();
-
     m_geometryConverter = new FbxGeometryConverter(m_sdkManager);
 }
 
 FbxScene *LDrawExporter::LoadScene(LDrawFile *file)
 {
+    LogI("Creating scene...");
     m_scene = FbxScene::Create(m_sdkManager, "My Scene");
     InitializeSdkObjects(m_sdkManager, m_scene);
 
