@@ -7,8 +7,7 @@ converts LDraw files to fbx
 - Use cmake to compile the project, you may need to change the FBX_SDK_PATH in the CMakeLists.txt file.
 - Download the complete.zip from [LDraw.org](https://www.ldraw.org/part-updates) and extract the files. Optionally add the unofficial library into the library folder (where parts/ and p/ is located).
 (don't use the library that studio came with, some faces have the wrong direction)
-- currently instanced meshes with different colors only work in unreal, if you want to use this with blender or just view it in windows' 3D viewer either disable instancing(caching) or set the export depth to Multipart or Submodel (which works because only part and primitive have different colors), this problem might be solved entirely by changing the fbx sdk version
-- additional export settings can be found in the LDrawExporter header
+- additional export settings can be found in the LDrawExporter.hpp
 
 ## Goal
 #### Exporting ldraw files to fbx, optimized for games/ rendering.
@@ -33,3 +32,8 @@ I started this project because of certain features that i could not add to other
 - using submodel names for automatic rigging (minifigurines, vehecles, ...)
 - add bones for connections
 - make unreal use correct materials (emission, transparency, ...), not just the color data
+
+## Troubleshooting
+- if there are missing files try to dig around in the ldraw library that came with your ldraw file editor and copy paste the missing file into your unofficial ldraw library folder (in part/ or p/ accordingly)
+- if colors are missing during export and you used studio check if you used any "render only" colors and change those to colors without a (i) logo
+- currently instanced meshes with different colors only work in unreal, if you want to use this with blender or just view it in windows' 3D viewer either disable instancing(caching) in the LDrawExporter.hpp or set the export depth to Multipart or Submodel (which works because only part and primitive have different colors), this problem might be solved entirely by changing the fbx sdk version
