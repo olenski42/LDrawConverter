@@ -29,7 +29,8 @@ public:
     void LoadColorFile();
     std::map<ColorID, LDrawColor> colorMap;
 
-    unsigned int meshCount = 0;
+    int fileCount = 0;
+    int unresolvedCount = 0;
 
 private:
     void ResolveAll();

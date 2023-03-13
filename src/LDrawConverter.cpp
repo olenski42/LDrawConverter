@@ -101,7 +101,7 @@ LDrawFile *LDrawConverter::ParseFile(std::string filePath)
     LDrawFile *file = GetFile(filePath, FILETYPE_MULTIPART);
     ResolveAll();
 
-    LogI("File converted! (file count: " << meshCount << " | unresolved: " << unresolvedFiles.size() << ")");
+    LogI("File converted! (file count: " << fileCount << " | unresolved: " << unresolvedCount << ")");
 
 
     return unresolvedFiles.size() == 0 ? file : nullptr;
@@ -234,7 +234,7 @@ bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileT
 
             std::transform(subFileName.begin(), subFileName.end(), subFileName.begin(), ::tolower);
 
-            meshCount++;
+            fileCount++;
             bool determinant = glm::determinant(transform) < 0;
             bool invert = invertNext != determinant;
             SubFile s = SubFile{GetFile(subFileName, nextFileType(fileType)), stoul(line[1]), transform, invert};
@@ -395,7 +395,7 @@ void LDrawConverter::ResolveAll()
         std::ifstream stream = FindFile(&currentFile);
         if (!stream.is_open())
         {
-            LogE("Could not open file " << currentFile.fileName);
+            unresolvedCount++;
             continue;
         }
 
