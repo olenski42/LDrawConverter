@@ -91,28 +91,36 @@ LDrawExporter::LDrawExporter(LDrawConverter *converter)
     : m_converter(converter)
 {
     m_sdkManager = FbxManager::Create();
-    m_scene = FbxScene::Create(m_sdkManager, "My Scene");
-    InitializeSdkObjects(m_sdkManager, m_scene);
+
     m_geometryConverter = new FbxGeometryConverter(m_sdkManager);
 }
 
-void LDrawExporter::Export(LDrawFile *file, std::string outPath)
+FbxScene *LDrawExporter::LoadScene(LDrawFile *file)
 {
+    m_scene = FbxScene::Create(m_sdkManager, "My Scene");
+    InitializeSdkObjects(m_sdkManager, m_scene);
+
     if (m_materialMap.size() == 0)
     {
         m_converter->LoadColorFile();
         LoadMaterials();
     }
 
-    bool lResult;
-    FbxNode *lRootNode = m_scene->GetRootNode();
-
     LogI("Converting file...");
-
     glm::mat4 rootTransform = glm::mat4(1.0f);
     rootTransform = glm::rotate(rootTransform, glm::radians(180.0f), glm::vec3(0, 0, 1));
     SubFile rootSubFile = {file, 16, rootTransform, false};
     ConvertFile(&rootSubFile, m_scene->GetRootNode(), MeshCarryInfo());
+
+    return m_scene;
+}
+
+void LDrawExporter::Export(FbxScene *scene, std::string outPath)
+{
+    m_scene = scene;
+
+    bool lResult;
+    FbxNode *lRootNode = m_scene->GetRootNode();
 
     // Save the scene.
     LogI("Saving scene to \"" << outPath << "\"...");

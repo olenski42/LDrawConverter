@@ -8,7 +8,9 @@ class LDrawExporter
 {
 public:
     LDrawExporter(LDrawConverter *converter);
-    void Export(LDrawFile *file, std::string outPath);
+
+    FbxScene *LDrawExporter::LoadScene(LDrawFile *file);
+    void Export(FbxScene *scene, std::string outPath);
 
 private:
     struct MeshCarryInfo
