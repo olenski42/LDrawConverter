@@ -45,7 +45,7 @@ private:
 
     // merge settings
     // what the deepest file type to turn into a mesh is
-    FileType exportDepth = FILETYPE_SUBMODEL;
+    FileType exportDepth = FILETYPE_PART;
     // which file types to cache, export depth must be at least as high to cache it
     bool cacheFiles[FILETYPE_AMOUNT] = { false, true, false, false }; // primitive, part, subpart, multipart
     bool addGaps = false;
