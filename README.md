@@ -21,9 +21,10 @@ Exporting ldraw files to fbx, optimized for games/ rendering and automating the 
 
 ## TODO
 - set export settings and file paths without recompiling
-- mesh optimizations(removing studs completely occluded studs, removing occluded faces, ...)
+- remove occluded studs
+- remove occluded faces alltogether
 - more accurate materials
-- edge smoothing
+- face smoothing
 - edge beveling
 - advanced edge beveling with detection to avoid leaving gaps
 - using submodel names for automatic rigging (minifigurines, vehecles, ...)
