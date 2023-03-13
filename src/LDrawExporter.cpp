@@ -437,7 +437,7 @@ FbxNode *LDrawExporter::CreateNodeFromMeshMapped(LDrawExporter::MeshColorMapped 
         auto a = m_materialMap.find(color);
         if (a == m_materialMap.end())
         {
-            LogW("Material " << meshMappedSource->materialMap[i] << " not found");
+            LogW("Material " << color << " not found");
             node->AddMaterial(m_materialMap[0]);
         }
         else
