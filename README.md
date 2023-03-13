@@ -5,7 +5,7 @@ converts LDraw files to fbx
 ## Compilation & Usage
 - Install the [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2020-0) if you haven't already.
 - Use cmake to compile the project, you may need to change the FBX_SDK_PATH in the CMakeLists.txt file.
-- Download the complete.zip from [LDraw.org](https://www.ldraw.org/part-updates) and extract the files
+- Download the complete.zip from [LDraw.org](https://www.ldraw.org/part-updates) and extract the files optionally add the unofficial library into the library folder (where parts/ and p/ is located)
 (don't use the library studio came with, some faces have the wrong direction)
 - currently instanced meshes with different colors only work in unreal, if you want to use this with blender or just view it in windows' 3D viewer either disable instancing(caching) or set the export depth to Multipart or Submodel (which works because only part and primitive have different colors), this problem might be solved entirely by changing the fbx sdk version
 - additional export settings can be found in the LDrawExporter header
@@ -19,9 +19,9 @@ I started this project because of certain features that i could not add to other
 - Export with instancing
 - custom part sizes (scaling down for gaps)
 - simple file dialog for file selection
+- support for the unofficial LDraw library
 
 ## TODO
-- support for the unofficial LDraw library
 - set export settings without recompiling
 - remove occluded studs
 - remove occluded faces alltogether
