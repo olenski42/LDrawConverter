@@ -17,6 +17,7 @@ Exporting ldraw files to fbx, optimized for games/ rendering and automating the 
 - Export as single Mesh
 - Export with instanced parts (aka. bricks)
 - Export with fbx nodes for every part (use this if you want to use your file in blender. Alternitivly try to change the fbx version in the sdk to use instancing)
+- custom part sized (e.g. scaling all slightly down for gaps, not wanted in games tho, edge beveling preferred for lighting and unreals nanite as gaps increase rendered meshes)
 
 ## TODO
 - set export settings and file paths without recompiling
@@ -24,8 +25,7 @@ Exporting ldraw files to fbx, optimized for games/ rendering and automating the 
 - more accurate materials
 - edge smoothing
 - edge beveling
-- advanced edge beveling with detection for 
-- custom part sized (e.g. scaling all slightly down for gaps, not wanted in games tho, edge beveling preferred for lighting and unreals nanite as gaps increase rendered meshes)
+- advanced edge beveling with detection to avoid leaving gaps
 - using submodel names for automatic rigging (minifigurines, vehecles, ...)
 - using submodel names for defining which models to create (e.g. creating a modular building in studio and exporting all of the submodels as single files)
 - make unreal use correct materials (emission, transparency, ...), not just the color data
