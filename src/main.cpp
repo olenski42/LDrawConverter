@@ -1,13 +1,17 @@
 #include "LDrawConverter.hpp"
 #include "LDrawExporter.hpp"
 #include "MeshData.hpp"
+#include "Config.hpp"
 #include "portable-file-dialogs.h"
 #include <string>
 
 int main(int argc, char const *argv[])
 {
+    Config config = Config();
+
     // ldraw library path
-    LDrawConverter converter("LDRAWLIBRARY_PATH/");
+    LDrawConverter converter(config.ldrawLibraryPath.c_str());
+
 
     pfd::open_file fileDialog("Select LDraw file", ".", {"LDraw files (.ldr .mpd)", "*.ldr *.mpd", "All files", "*"});
     if (fileDialog.result().size() == 0)
