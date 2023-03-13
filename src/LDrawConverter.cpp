@@ -101,7 +101,8 @@ LDrawFile *LDrawConverter::ParseFile(std::string filePath)
     LDrawFile *file = GetFile(filePath, FILETYPE_MULTIPART);
     ResolveAll();
 
-    LogI("MeshCount: " << meshCount);
+    LogI("File converted! (file count: " << meshCount << " | unresolved: " << unresolvedFiles.size() << ")");
+
 
     return unresolvedFiles.size() == 0 ? file : nullptr;
 }
@@ -401,7 +402,6 @@ void LDrawConverter::ResolveAll()
         currentFile.file->fileType = currentFile.fileType;
         ParseFile(currentFile.file, stream, currentFile.fileType);
     }
-    LogI(unresolvedFiles.size() << " unresolved files!");
 }
 
 void LDrawConverter::LoadColorFile()

@@ -112,6 +112,7 @@ FbxScene *LDrawExporter::LoadScene(LDrawFile *file)
     rootTransform = glm::rotate(rootTransform, glm::radians(180.0f), glm::vec3(0, 0, 1));
     SubFile rootSubFile = {file, 16, rootTransform, false};
     ConvertFile(&rootSubFile, m_scene->GetRootNode(), MeshCarryInfo());
+    LogI("File converted!");
 
     return m_scene;
 }
@@ -135,6 +136,8 @@ void LDrawExporter::Export(FbxScene *scene, std::string outPath)
 
     // Destroy all objects created by the FBX SDK.
     DestroySdkObjects(m_sdkManager, lResult);
+
+    LogI("Scene saved!");
 }
 
 void LDrawExporter::LoadMaterials()
