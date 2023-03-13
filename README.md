@@ -9,7 +9,7 @@ converts LDraw files to fbx
     (if you have Studio2.0 installed you can also use it's library, which is commonly found at "C:/Program Files/Studio 2.0/ldraw").
 - Edit the main.cpp and set the correct paths. (This is a WIP, a file dialog will (maybe) follow)
 - Set your export settings in the LDrawExporter header file
-- if you want to use this with blender or just view it in windows' 3D viewer either disable instancing(caching) or set the export depth to Multipart (which also disables instancing, because everyting is merged into one mesh)
+- currently instanced meshes with different colors only work in unreal, if you want to use this with blender or just view it in windows' 3D viewer either disable instancing(caching) or set the export depth to Multipart or Submodel (which works because only part and primitive have different colors), this problem might be solved entirely by changing the fbx sdk version
 
 ## Goal
 ###Exporting ldraw files to fbx, optimized for games/ rendering.
