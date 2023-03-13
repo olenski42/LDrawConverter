@@ -14,7 +14,7 @@ converts LDraw files to fbx
 Exporting ldraw files to fbx, optimized for games/ rendering and automating the creation of skeletons.
 
 ## Features
-- Export as single Mesh
+- Merge to a custom merge depth (multipart, subpart, part, primitive)
 - Export with instanced parts (aka. bricks)
 - Export with fbx nodes for every part (use this if you want to use your file in blender. Alternitivly try to change the fbx version in the sdk to use instancing)
 - custom part sizes (e.g. scaling all slightly down for gaps, not wanted in games tho, edge beveling preferred for lighting and unreals nanite as gaps increase rendered meshes)
