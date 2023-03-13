@@ -22,7 +22,7 @@ I started this project because of certain features that i could not just add to 
 
 ## TODO
 - support for the unofficial LDraw library
-- set export settings and file paths without recompiling
+- set export settings without recompiling
 - remove occluded studs
 - remove occluded faces alltogether
 - more accurate materials
