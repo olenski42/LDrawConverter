@@ -408,11 +408,6 @@ LDrawExporter::MeshColorMapped LDrawExporter::CreateMeshMappedFromMeshData(MeshD
 
     meshMapped.mesh->GenerateNormals();
 
-    
-    m_geometryConverter->ComputeEdgeSmoothingFromNormals(meshMapped.mesh);
-    // convert soft/hard edge info to smoothing group info
-    m_geometryConverter->ComputePolygonSmoothingFromEdgeSmoothing(meshMapped.mesh);
-
     return meshMapped;
 }
 
