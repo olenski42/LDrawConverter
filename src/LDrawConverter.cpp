@@ -169,7 +169,7 @@ bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileT
                 // make name lower
                 std::transform(currentFileName.begin(), currentFileName.end(), currentFileName.begin(), ::tolower);
 
-                if (fileType != FILETYPE_MULTIPART && fileType != FILETYPE_SUBPART)
+                if (fileType != FILETYPE_MULTIPART && fileType != FILETYPE_SUBMODEL)
                     LogW("file \"" << currentFileName << "\" is a subfile of a non-mpd file!");
 
                 if (MPDsub == false)
@@ -299,7 +299,7 @@ bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileT
 
 std::ifstream LDrawConverter::FindFile(UnresolvedFile *file)
 {
-    if (file->fileType == FILETYPE_SUBPART)
+    if (file->fileType == FILETYPE_SUBMODEL)
     {
         file->fileType = FILETYPE_PART;
     }
@@ -331,7 +331,7 @@ std::ifstream LDrawConverter::FindFile(UnresolvedFile *file)
             path = libPath + "parts/" + file->fileName;
         else if (file->fileType == FILETYPE_PRIMITIVE)
             path = libPath + "p/" + file->fileName;
-        else if (file->fileType == FILETYPE_SUBPART)
+        else if (file->fileType == FILETYPE_SUBMODEL)
             continue;
 
         stream.open(path);
