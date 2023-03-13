@@ -100,6 +100,8 @@ LDrawFile *LDrawConverter::ParseFile(std::string filePath)
     LDrawFile *file = GetFile(filePath, FILETYPE_MULTIPART);
     ResolveAll();
 
+    LogI("MeshCount: " << meshCount);
+
     return unresolvedFiles.size() == 0 ? file : nullptr;
 }
 
