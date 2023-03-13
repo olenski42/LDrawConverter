@@ -312,9 +312,9 @@ std::ifstream LDrawConverter::FindFile(UnresolvedFile *file)
     if (file->fileType == FILETYPE_MULTIPART)
         path = file->fileName;
     else if (file->fileType == FILETYPE_PART)
-        path = libPath + "parts/" + file->fileName;
+        path = libPath + "/parts/" + file->fileName;
     else if (file->fileType == FILETYPE_PRIMITIVE)
-        path = libPath + "p/" + file->fileName;
+        path = libPath + "/p/" + file->fileName;
 
     stream.open(path);
 
@@ -330,9 +330,9 @@ std::ifstream LDrawConverter::FindFile(UnresolvedFile *file)
         if (file->fileType == FILETYPE_MULTIPART)
             path = file->fileName;
         else if (file->fileType == FILETYPE_PART)
-            path = libPath + "parts/" + file->fileName;
+            path = libPath + "/parts/" + file->fileName;
         else if (file->fileType == FILETYPE_PRIMITIVE)
-            path = libPath + "p/" + file->fileName;
+            path = libPath + "/p/" + file->fileName;
         else if (file->fileType == FILETYPE_SUBMODEL)
             continue;
 
@@ -367,7 +367,7 @@ void LDrawConverter::ResolveAll()
 
 void LDrawConverter::LoadColorFile()
 {
-    std::ifstream fileStream((libPath + "LDConfig.ldr").c_str());
+    std::ifstream fileStream((libPath + "/LDConfig.ldr").c_str());
     if (!fileStream.is_open())
     {
         LogE("Could not open color file! (missing \"LDConfig.ldr\" in the lib folder)");
