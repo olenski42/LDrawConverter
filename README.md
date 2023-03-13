@@ -17,7 +17,7 @@ I started this project because of certain features that i could not add to other
 ## Features
 - Merge to a custom filetype(multipart, submodel, part, primitive) depth 
 - Export with instancing
-- custom part sizes (e.g. scaling all slightly down for gaps, not wanted in games tho, edge beveling preferred for lighting and unreals nanite as gaps increase rendered meshes)
+- custom part sizes (scaling down for gaps)
 - simple file dialog for file selection
 
 ## TODO
