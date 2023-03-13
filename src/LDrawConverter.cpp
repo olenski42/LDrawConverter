@@ -89,6 +89,7 @@ LDrawFile *LDrawConverter::GetFile(std::string path, FileType fileType)
 
 LDrawFile *LDrawConverter::ParseFile(std::string filePath)
 {
+    LogI("Parsing file \"" << filePath << "\"");
     std::ifstream fileStream;
     fileStream.open(filePath);
 
@@ -301,6 +302,7 @@ bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileT
 
 std::ifstream LDrawConverter::FindFile(UnresolvedFile *file)
 {
+    // submodels should have been defined in the main file
     if (file->fileType == FILETYPE_SUBMODEL)
     {
         file->fileType = FILETYPE_PART;
@@ -318,29 +320,66 @@ std::ifstream LDrawConverter::FindFile(UnresolvedFile *file)
 
     stream.open(path);
 
+    // check unofficial library
     if (stream.is_open() == false)
     {
-        //LogW("file \"" << path << "\" not found, extending search");
-        file->fileType = FILETYPE_MULTIPART;
-    }
-    while (stream.is_open() == false && file->fileType > 0)
-    {
-        file->fileType = (FileType)((int)file->fileType - 1);
-
-        if (file->fileType == FILETYPE_MULTIPART)
-            path = file->fileName;
-        else if (file->fileType == FILETYPE_PART)
-            path = libPath + "/parts/" + file->fileName;
+        if (file->fileType == FILETYPE_PART)
+        {
+            path = libPath + "/unofficial/parts/" + file->fileName;
+            stream.open(path);
+        }
         else if (file->fileType == FILETYPE_PRIMITIVE)
+        {
+            path = libPath + "/unofficial/p/" + file->fileName;
+            stream.open(path);
+        }
+    }
+
+    bool correctType = stream.is_open();
+    FileType testType = FILETYPE_MULTIPART;
+    while (stream.is_open() == false && testType >= 0)
+    {
+        if (testType == FILETYPE_MULTIPART)
+            path = file->fileName;
+        else if (testType == FILETYPE_PART)
+            path = libPath + "/parts/" + file->fileName;
+        else if (testType == FILETYPE_PRIMITIVE)
             path = libPath + "/p/" + file->fileName;
-        else if (file->fileType == FILETYPE_SUBMODEL)
+        else if (testType == FILETYPE_SUBMODEL)
+        {
+            testType = (FileType)((int)testType - 1);
             continue;
+        }
 
         stream.open(path);
+
+        // check unofficial library
+        if (stream.is_open() == false)
+        {
+            if (testType == FILETYPE_PART)
+            {
+                path = libPath + "/unofficial/parts/" + file->fileName;
+                stream.open(path);
+            }
+            else if (testType == FILETYPE_PRIMITIVE)
+            {
+                path = libPath + "/unofficial/p/" + file->fileName;
+                stream.open(path);
+            }
+        }
+
+        if (!stream.is_open())
+            testType = (FileType)((int)testType - 1);
     }
 
     if (stream.is_open() == false)
+    {
         LogW("File \"" << file->fileName << "\" could not be found");
+    }
+    else if (correctType == false)
+    {
+        file->fileType = testType;
+    }
 
     return stream;
 }
@@ -414,9 +453,9 @@ void LDrawConverter::LoadColorFile()
                 if (line[i] == "ALPHA")
                 {
                     colorMap[colorID].transparency = true;
-                    if(i + 1 < line.size())
+                    if (i + 1 < line.size())
                     {
-                        colorMap[colorID].alpha = stof(line[i+1])/ 255.0f;
+                        colorMap[colorID].alpha = stof(line[i + 1]) / 255.0f;
                         i++;
                     }
                     else
@@ -425,9 +464,9 @@ void LDrawConverter::LoadColorFile()
                 else if (line[i] == "LUMINANCE")
                 {
                     colorMap[colorID].glow = true;
-                    if(i + 1 < line.size())
+                    if (i + 1 < line.size())
                     {
-                        colorMap[colorID].luminance = stof(line[i+1])/ 255.0f;
+                        colorMap[colorID].luminance = stof(line[i + 1]) / 255.0f;
                         i++;
                     }
                     else
