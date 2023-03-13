@@ -17,7 +17,7 @@ Exporting ldraw files to fbx, optimized for games/ rendering and automating the 
 - Export as single Mesh
 - Export with instanced parts (aka. bricks)
 - Export with fbx nodes for every part (use this if you want to use your file in blender. Alternitivly try to change the fbx version in the sdk to use instancing)
-- custom part sized (e.g. scaling all slightly down for gaps, not wanted in games tho, edge beveling preferred for lighting and unreals nanite as gaps increase rendered meshes)
+- custom part sizes (e.g. scaling all slightly down for gaps, not wanted in games tho, edge beveling preferred for lighting and unreals nanite as gaps increase rendered meshes)
 
 ## TODO
 - set export settings and file paths without recompiling
