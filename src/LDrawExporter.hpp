@@ -28,7 +28,7 @@ private:
     LDrawConverter *m_converter;
     FbxManager *m_sdkManager;
     FbxScene *m_scene;
-    FbxGeometryConverter *m_converterManager;
+    FbxGeometryConverter *m_geometryConverter;
 
     // call only if FbxMaterials have not been loaded yet (m_materialMap is empty)
     void LoadMaterials();
@@ -44,9 +44,11 @@ private:
     void ConvertFile(SubFile *thisInstance, FbxNode *parentNode, MeshCarryInfo carryInfo);
 
     // merge settings
-    FileType exportDepth = FILETYPE_PART;
+    // what the deepest file type to turn into a mesh is
+    FileType exportDepth = FILETYPE_SUBMODEL;
     // which file types to cache, export depth must be at least as high to cache it
     bool cacheFiles[FILETYPE_AMOUNT] = { false, true, false, false }; // primitive, part, subpart, multipart
+    bool addGaps = false;
     float partSize = 0.99f;
 
     // helper functions

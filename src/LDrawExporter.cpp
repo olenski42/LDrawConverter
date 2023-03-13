@@ -93,7 +93,7 @@ LDrawExporter::LDrawExporter(LDrawConverter *converter)
     m_sdkManager = FbxManager::Create();
     m_scene = FbxScene::Create(m_sdkManager, "My Scene");
     InitializeSdkObjects(m_sdkManager, m_scene);
-    m_converterManager = new FbxGeometryConverter(m_sdkManager);
+    m_geometryConverter = new FbxGeometryConverter(m_sdkManager);
 }
 
 void LDrawExporter::Export(LDrawFile *file, std::string outPath)
@@ -113,7 +113,6 @@ void LDrawExporter::Export(LDrawFile *file, std::string outPath)
     rootTransform = glm::rotate(rootTransform, glm::radians(180.0f), glm::vec3(0, 0, 1));
     SubFile rootSubFile = {file, 16, rootTransform, false};
     ConvertFile(&rootSubFile, m_scene->GetRootNode(), MeshCarryInfo());
-
 
     // Save the scene.
     LogI("Saving scene to \"" << outPath << "\"...");
@@ -231,7 +230,7 @@ void printChildrenMaterialAmount(FbxNode *node, int level = 0)
 
 void LDrawExporter::AddSubFileToMeshDataRecursion(SubFile *thisInstance, MeshData *rootMeshData, MeshCarryInfo carryInfo)
 {
-    if(thisInstance->file->fileType == FILETYPE_PART)
+    if (addGaps && thisInstance->file->fileType == FILETYPE_PART)
         carryInfo.matToRoot = glm::scale(carryInfo.matToRoot, glm::vec3(partSize, partSize, partSize));
 
     // TODO multiply matrix with scaling value if scale parts is enabled
@@ -246,9 +245,9 @@ void LDrawExporter::ConvertFile(SubFile *thisInstance, FbxNode *parentNode, Mesh
 {
     FbxNode *node;
     FbxAMatrix mat = GetMatrix(thisInstance->transform);
-    
+
     // resize node if it woud not be resized in sthe mesh data recursion
-    if(exportDepth != FILETYPE_PART && thisInstance->file->fileType == FILETYPE_PART)
+    if (addGaps && exportDepth != FILETYPE_PART && thisInstance->file->fileType == FILETYPE_PART)
         mat.SetS(mat.GetS() * partSize);
 
     if (thisInstance->file->fileType > exportDepth)
@@ -260,7 +259,7 @@ void LDrawExporter::ConvertFile(SubFile *thisInstance, FbxNode *parentNode, Mesh
             ConvertFile(&subFile, node, {carryInfo.matToRoot * subFile.transform, carryInfo.bfcInvert != subFile.bfcInvert, subFile.color == 16 ? carryInfo.color : subFile.color});
         }
     }
-    else if(thisInstance->file->fileType == exportDepth)
+    else if (thisInstance->file->fileType == exportDepth)
     {
         MeshColorMapped meshMapped;
         if (cacheFiles[thisInstance->file->fileType])
@@ -289,9 +288,9 @@ void LDrawExporter::ConvertFile(SubFile *thisInstance, FbxNode *parentNode, Mesh
 
         node = CreateNodeFromMeshMapped(&meshMapped, thisInstance->file->name.c_str(), carryInfo.color);
     }
-    else if(thisInstance->file->fileType > exportDepth)
+    else // if (thisInstance->file->fileType < exportDepth)
     {
-        LogI("Error: exportDepth is too low");
+        LogE("Error: exportDepth is too low");
     }
 
     node->LclTranslation.Set(mat.GetT());
@@ -408,6 +407,11 @@ LDrawExporter::MeshColorMapped LDrawExporter::CreateMeshMappedFromMeshData(MeshD
     }
 
     meshMapped.mesh->GenerateNormals();
+
+    
+    m_geometryConverter->ComputeEdgeSmoothingFromNormals(meshMapped.mesh);
+    // convert soft/hard edge info to smoothing group info
+    m_geometryConverter->ComputePolygonSmoothingFromEdgeSmoothing(meshMapped.mesh);
 
     return meshMapped;
 }
