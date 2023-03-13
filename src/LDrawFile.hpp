@@ -30,13 +30,14 @@ enum FileType
     FILETYPE_PART,
     FILETYPE_SUBPART,
     FILETYPE_MULTIPART,
+    FILETYPE_AMOUNT // This is not a valid file type, it is used to get the amount of file types
 };
 
 struct UnresolvedFile
 {
     LDrawFile* file;
     std::string fileName;
-    FileType fileType; // The file type it was requested from, reduces the amount of files that need to be searched
+    FileType fileType;
 };
 
 struct SubFile

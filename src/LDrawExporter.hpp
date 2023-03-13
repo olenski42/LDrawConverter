@@ -39,28 +39,15 @@ private:
     // cache of Meshes that have already been converted
     std::map<LDrawFile *, MeshColorMapped> m_meshMap;
 
-    /**
-     * @param ldrFile The file to convert
-     */
-    FbxNode *ConvertFile(LDrawFile *ldrFile);
-    /**
-     * @param thisInstance The file to convert
-     * @param parentMeshData The mesh data of the parent file, adds current- and sub-meshes to it if mergeAll is true, or to parts if cachePartData is true
-     * @param parentNode The parent node of the file, adds the current node if mergeAll is false
-     * @param carryColor The color to carry to the next file
-     * @param carryTransform The transform to carry to the next file
-     * @param carryInvert The bfc invert to carry to the next file
-     */
-    void ConvertFileRecursion(SubFile *thisInstance, MeshData *parentMeshData, FbxNode *parentNode, MeshCarryInfo carryInfo);
+
     void AddSubFileToMeshDataRecursion(SubFile *thisInstance, MeshData *rootMeshData, MeshCarryInfo carryInfo);
-    void CreateNodeTreeRecursion(SubFile *thisInstance, FbxNode *parentNode, MeshCarryInfo carryInfo);
+    void ConvertFile(SubFile *thisInstance, FbxNode *parentNode, MeshCarryInfo carryInfo);
 
     // merge settings
-    bool allNodes = true;
-    bool mergeAll = false;
-    bool cachePartMeshData = false;
-    bool cachePrimitiveData = false;
-    bool cachePartMeshMaps = true;
+    FileType exportDepth = FILETYPE_SUBPART;
+    // which file types to cache, export depth must be at least as high to cache it
+    bool cacheFiles[FILETYPE_AMOUNT] = { true, true, false, false }; // primitive, part, subpart, multipart
+    float partSize = 0.99f;
 
     // helper functions
     inline void MergeLDrawIntoMeshData(MeshData *meshDest, LDrawFile const *ldrawSource, MeshCarryInfo carryInfo);
