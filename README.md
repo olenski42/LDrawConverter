@@ -12,8 +12,8 @@ converts LDraw files to fbx
 - currently instanced meshes with different colors only work in unreal, if you want to use this with blender or just view it in windows' 3D viewer either disable instancing(caching) or set the export depth to Multipart or Submodel (which works because only part and primitive have different colors), this problem might be solved entirely by changing the fbx sdk version
 
 ## Goal
-###Exporting ldraw files to fbx, optimized for games/ rendering.
-I started this project because of certain features that just could not be created using other exporters, namely adding an edge crease whilst not actually adding gaps to the mesh, automating the creation of skeletons and removing occluded vertices
+#### Exporting ldraw files to fbx, optimized for games/ rendering.
+I started this project because of certain features that i could not just add to other exporters, namely adding an edge crease whilst not actually adding gaps to the mesh, automating the creation of skeletons and removing occluded vertices
 
 ## Features
 - Merge to a custom filetype(multipart, submodel, part, primitive) depth 
