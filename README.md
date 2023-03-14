@@ -11,7 +11,7 @@ converts LDraw files to fbx
 
 ## Goal
 #### Exporting ldraw files to fbx, optimized for games/ rendering.
-I started this project because of certain features that i could not add to other exporters, namely adding an edge crease whilst not actually adding gaps to the mesh, automating the creation of skeletons and removing occluded vertices
+I started this project because of certain features that i needed to deeply integrate into an exporter, namely adding an edge crease whilst not actually adding gaps to the mesh, automating the creation of skeletons not only for rigging characters but also snapping bricks together(maybe in vr...), and optimizing meshes.
 
 ## Features
 - Merge to a custom filetype(multipart, submodel, part, primitive) depth 
@@ -23,15 +23,16 @@ I started this project because of certain features that i could not add to other
 ## TODO
 - support for other export formats supported by the fbx sdk(obj, collada)
 - set export settings without recompiling
-- remove occluded studs
-- remove occluded faces alltogether
+- mesh optimizing
+  - remove occluded studs
+  - remove occluded vertices alltogether
 - more accurate materials
 - face smoothing
 - edge beveling
 - advanced edge beveling with detection to avoid leaving gaps
 - using submodel names for automatic rigging (minifigurines, vehecles, ...)
-- add bones for connections
-- make unreal use correct materials (emission, transparency, ...), not just the color data
+- add bones for connectors
+- make unreal use correct materials (emission, transparency, ...), not just the raw color
 
 ## Troubleshooting
 - if there are missing files try to dig around in the ldraw library that came with your ldraw file editor and copy paste the missing file into your unofficial ldraw library folder (in part/ or p/ accordingly)
