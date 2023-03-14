@@ -14,7 +14,7 @@ converts LDraw files to fbx
 I started this project because of certain features that i needed to deeply integrate into an exporter, namely adding an edge crease whilst not actually adding gaps to the mesh, automating the creation of skeletons not only for rigging characters but also snapping bricks together(maybe in vr...), and optimizing meshes.
 
 ## Features
-- Merge to a custom filetype(multipart, submodel, part, primitive) depth 
+- Merge down to a custom filetype(multipart, submodel, part, primitive) depth 
 - Export with instancing
 - custom part sizes (scaling down for gaps)
 - simple file dialog for file selection
