@@ -3,7 +3,7 @@ converts LDraw files to fbx
 
 
 ## Compilation & Usage
-- Install the [FBX SDK](https://www.autodesk.com/content/dam/autodesk/www/adn/fbx/2020-2) if you haven't already.
+- Install the [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2020-2) if you haven't already.
 - Use cmake to compile the project, you may need to change the FBX_SDK_PATH in the CMakeLists.txt file.
 - Download the complete.zip from [LDraw.org](https://www.ldraw.org/part-updates) and extract the files. Optionally add the unofficial library into the library folder (where parts/ and p/ is located).
 (don't use the library that studio came with, some faces have the wrong direction)
