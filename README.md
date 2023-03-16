@@ -3,7 +3,7 @@ converts LDraw files to fbx
 
 
 ## Compilation & Usage
-- Install the [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2020-2) if you haven't already.
+- Install the [FBX SDK](https://www.autodesk.com/developer-network/platform-technologies/fbx-sdk-2020-2) (FBX SDK 2020.2 VS2015) if you haven't already.
 - Use cmake to compile the project, you may need to change the FBX_SDK_PATH in the CMakeLists.txt file.
 - Download the complete.zip from [LDraw.org](https://www.ldraw.org/part-updates) and extract the files. Optionally add the unofficial library into the library folder (where parts/ and p/ is located).
 (don't use the library that studio came with, some faces have the wrong direction)
@@ -21,7 +21,7 @@ I started this project because of certain features that i needed to deeply integ
 - support for the unofficial LDraw library
 
 ## TODO
-- support for other export formats supported by the fbx sdk(obj, collada)
+- export in other formats supported by the fbx sdk(obj, collada, fbx ascii)
 - set export settings without recompiling
 - mesh optimizing
   - remove occluded studs
@@ -31,7 +31,7 @@ I started this project because of certain features that i needed to deeply integ
 - edge beveling
 - advanced edge beveling with detection to avoid leaving gaps
 - using submodel names for automatic rigging (minifigurines, vehecles, ...)
-- add bones for connectors
+- sockets for object snapping in [unreal](https://docs.unrealengine.com/5.1/en-US/fbx-static-mesh-pipeline-in-unreal-engine/#sockets) 
 - make unreal use correct materials (emission, transparency, ...), not just the raw color
 
 ## Troubleshooting
