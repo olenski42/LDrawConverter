@@ -31,8 +31,7 @@ I started this project because of certain features that i needed to deeply integ
 - edge beveling
 - advanced edge beveling with detection to avoid leaving gaps
 - using submodel names for automatic rigging (minifigurines, vehecles, ...)
-- sockets for object snapping in [unreal](https://docs.unrealengine.com/5.1/en-US/fbx-static-mesh-pipeline-in-unreal-engine/#sockets) 
-- make unreal use correct materials (emission, transparency, ...), not just the raw color
+- [sockets](https://docs.unrealengine.com/5.1/en-US/fbx-static-mesh-pipeline-in-unreal-engine/#sockets) for object snapping in unreal
 
 ## Troubleshooting
 - if there are missing files try to dig around in the ldraw library that came with your ldraw file editor and copy paste the missing file into your unofficial ldraw library folder (in part/ or p/ accordingly)
