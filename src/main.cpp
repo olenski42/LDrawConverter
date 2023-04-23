@@ -13,7 +13,7 @@ int main(int argc, char const *argv[])
     LDrawConverter converter(config.ldrawLibraryPath.c_str());
 
     LogI("Select a file to convert");
-    pfd::open_file fileDialog("Select LDraw file", ".", {"LDraw files (.ldr .mpd)", "*.ldr *.mpd", "All files", "*"});
+    pfd::open_file fileDialog("Select LDraw file", ".", {"LDraw files (.ldr .mpd .dat)", "*.ldr *.mpd *.dat", "All files", "*"});
     if (fileDialog.result().size() == 0)
     {
         LogI("No file selected");
