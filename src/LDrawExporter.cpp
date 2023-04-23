@@ -270,6 +270,12 @@ void LDrawExporter::ConvertFile(SubFile *thisInstance, FbxNode *parentNode, Mesh
         {
             ConvertFile(&subFile, node, {carryInfo.matToRoot * subFile.transform, carryInfo.bfcInvert != subFile.bfcInvert, subFile.color == 16 ? carryInfo.color : subFile.color});
         }
+
+        node->LclTranslation.Set(mat.GetT());
+        node->LclScaling.Set(mat.GetS());
+        node->LclRotation.Set(mat.GetR());
+
+        parentNode->AddChild(node);
     }
     else if (thisInstance->file->fileType == exportDepth)
     {
@@ -299,17 +305,16 @@ void LDrawExporter::ConvertFile(SubFile *thisInstance, FbxNode *parentNode, Mesh
         }
 
         node = CreateNodeFromMeshMapped(&meshMapped, thisInstance->file->name.c_str(), carryInfo.color);
+        node->LclTranslation.Set(mat.GetT());
+        node->LclScaling.Set(mat.GetS());
+        node->LclRotation.Set(mat.GetR());
+
+        parentNode->AddChild(node);
     }
     else // if (thisInstance->file->fileType < exportDepth)
     {
         LogE("Error: exportDepth is too low");
     }
-
-    node->LclTranslation.Set(mat.GetT());
-    node->LclScaling.Set(mat.GetS());
-    node->LclRotation.Set(mat.GetR());
-
-    parentNode->AddChild(node);
 }
 
 void LDrawExporter::MergeLDrawIntoMeshData(MeshData *meshDest, LDrawFile const *ldrawSource, MeshCarryInfo carryInfo)
@@ -442,7 +447,7 @@ FbxNode *LDrawExporter::CreateNodeFromMeshMapped(LDrawExporter::MeshColorMapped 
         if (color == 16)
         {
             LogW("Material 16");
-            node->AddMaterial(m_materialMap[0]);
+            node->AddMaterial(m_materialMap[15]);
             continue;
         }
 
@@ -450,7 +455,7 @@ FbxNode *LDrawExporter::CreateNodeFromMeshMapped(LDrawExporter::MeshColorMapped 
         if (a == m_materialMap.end())
         {
             LogW("Material " << color << " not found");
-            node->AddMaterial(m_materialMap[0]);
+            node->AddMaterial(m_materialMap[15]);
         }
         else
         {
