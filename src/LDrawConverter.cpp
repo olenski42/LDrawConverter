@@ -98,7 +98,24 @@ LDrawFile *LDrawConverter::ParseFile(std::string filePath)
         LogE("file \"" << filePath << "\" could not be opened!");
     }
 
-    LDrawFile *file = GetFile(filePath, FILETYPE_MULTIPART);
+    // convert to forward slash
+    for (auto it = filePath.begin(); it != filePath.end(); it++)
+    {
+        if (*it == '\\')
+            *it = '/';
+    }
+
+    // check if filepath stars with the library path
+    FileType fileType = FILETYPE_MULTIPART;
+    if (filePath.find(std::string(libPath + std::string("/part"))) == 0)
+    {
+        fileType = FILETYPE_PART;
+    }
+    else if (filePath.find(std::string(libPath + std::string("/p"))) == 0)
+    {
+        fileType = FILETYPE_PRIMITIVE;
+    }
+    LDrawFile *file = GetFile(filePath, fileType);
     ResolveAll();
 
     LogI("File converted! (file count: " << fileCount << " | unresolved: " << unresolvedCount << ")");
@@ -303,10 +320,12 @@ bool LDrawConverter::ParseFile(LDrawFile *file, std::ifstream &fileStream, FileT
 
 std::ifstream LDrawConverter::FindFile(UnresolvedFile *file)
 {
+    bool correctType = true;
     // submodels should have been defined in the main file
     if (file->fileType == FILETYPE_SUBMODEL)
     {
         file->fileType = FILETYPE_PART;
+        correctType = false;
     }
 
     std::ifstream stream;
@@ -336,7 +355,7 @@ std::ifstream LDrawConverter::FindFile(UnresolvedFile *file)
         }
     }
 
-    bool correctType = stream.is_open();
+    correctType = stream.is_open();
     FileType testType = FILETYPE_MULTIPART;
     while (stream.is_open() == false && testType >= 0)
     {
